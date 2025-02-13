@@ -49,14 +49,14 @@ const EXAMPLES = [
   },
   {
     id: 2,
-    label: "Find risk platform",
-    text: "unified risk platform",
+    label: "Find invoice items",
+    text: 'Find each line item in the invoice list. Return separate bounding boxes for each item, including its description and amount.',
     imagePath: "/examples/example2.jpg"
   },
   {
     id: 3,
-    label: "Find OCR text",
-    text: "OCR is now solved",
+    label: "Extract tax form fields",
+    text: 'Extract the form number, fiscal start date, fiscal end date, and the plan liabilities beginning of the year and end of the year.',
     imagePath: "/examples/example3.jpg"
   },
 ] as const;
