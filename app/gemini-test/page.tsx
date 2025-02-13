@@ -21,14 +21,8 @@ type VisualizationStyle = (typeof VISUALIZATION_STYLES)[number]["value"];
 
 const GEMINI_MODELS = [
   { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
-  {
-    value: "gemini-2.0-flash-lite-preview-02-05",
-    label: "Gemini 2.0 Flash Lite",
-  },
   { value: "gemini-2.0-pro-exp-02-05", label: "Gemini 2.0 Pro Exp" },
   { value: "gemini-1.5-pro-latest", label: "Gemini 1.5 Pro" },
-  { value: "gemini-1.5-flash-latest", label: "Gemini 1.5 Flash" },
-  { value: "gemini-1.5-flash-8b-latest", label: "Gemini 1.5 Flash 8B" },
 ];
 
 const COLORS = [
@@ -118,9 +112,7 @@ export default function GeminiTest() {
     );
 
     if (response.isSuccess && response.data) {
-      setResult(
-        `Found ${response.data.coordinates.length} matches for: "${response.data.text}"\n\nAPI Response:\n${JSON.stringify(response, null, 2)}`
-      );
+      setResult("");
       setCoordinates(response.data.coordinates);
     } else {
       setResult(`Error: ${response.message}`);
@@ -155,9 +147,7 @@ export default function GeminiTest() {
         );
 
         if (searchResponse.isSuccess && searchResponse.data) {
-          setResult(
-            `Found ${searchResponse.data.coordinates.length} matches for: "${searchResponse.data.text}"\n\nAPI Response:\n${JSON.stringify(searchResponse, null, 2)}`
-          );
+          setResult("");
           setCoordinates(searchResponse.data.coordinates);
         } else {
           setResult(`Error: ${searchResponse.message}`);
