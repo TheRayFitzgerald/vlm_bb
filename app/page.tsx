@@ -1,352 +1,354 @@
 "use client";
 
-import { perplexityAction } from "@/actions/perplexity-actions";
-import { takeScreenshot } from "@/actions/screenshot-actions";
-import { findContentCoordinatesWithGeminiAction } from "@/actions/gemini-actions";
-import { MessageWithCitations } from "@/types/message-types";
-import { ExtractedCitation, LoadingState } from "@/types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { MessageContent } from "./_components/message-content";
-import ReactMarkdown from "react-markdown";
-import { FlickeringGrid } from "@/components/magicui/flickering-grid";
-import { LoadingStatus } from "./_components/loading-status";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { findContentCoordinatesWithGeminiAction } from "@/actions/gemini-actions";
 
-export default function Home() {
-  const [messages, setMessages] = useState<MessageWithCitations[]>([]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadingState, setLoadingState] = useState<LoadingState>({
-    status: 'idle',
-    message: ''
-  });
-  const [isGridReady, setIsGridReady] = useState(false);
+const VISUALIZATION_STYLES = [
+  { value: "highlight", label: "Highlight Style" },
+  { value: "box", label: "Bounding Box Style" },
+] as const;
 
-  // Preload the grid
-  useEffect(() => {
-    requestAnimationFrame(() => {
-      setIsGridReady(true);
-    });
-  }, []);
+type VisualizationStyle = (typeof VISUALIZATION_STYLES)[number]["value"];
 
-  const handleExampleClick = (exampleText: string) => {
-    setInput(exampleText);
-    // Use setTimeout to ensure state is updated before submitting
-    setTimeout(() => {
-      handleSubmit(undefined, exampleText);
-    }, 0);
+const GEMINI_MODELS = [
+  { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+  { value: "gemini-2.0-pro-exp-02-05", label: "Gemini 2.0 Pro Exp" },
+  { value: "gemini-1.5-pro-latest", label: "Gemini 1.5 Pro" },
+];
+
+const COLORS = [
+  "#FFD700", // Gold
+  "#90EE90", // Light Green
+  "#87CEEB", // Sky Blue
+  "#FFA07A", // Light Salmon
+  "#DDA0DD", // Plum
+  "#F0E68C", // Khaki
+];
+
+const EXAMPLES = [
+  {
+    id: 1,
+    label: "Find invoice items",
+    text: "Find each line item in the invoice list. Return separate bounding boxes for each item, including its description and amount.",
+    imagePath: "/examples/example2.jpg",
+  },
+  {
+    id: 2,
+    label: "Extract tax form fields",
+    text: "Extract the form number, fiscal start date, fiscal end date, and the plan liabilities beginning of the year and end of the year.",
+    imagePath: "/examples/example3.jpg",
+  },
+  {
+    id: 3,
+    label: "Find multiple phrases",
+    text: 'get separte BBs for "richest behaviour intelligence" and "unified risk platform" and their content',
+    imagePath: "/examples/example1.jpg",
+  },
+] as const;
+
+export default function GeminiTest() {
+  const [selectedModel, setSelectedModel] = useState(GEMINI_MODELS[0].value);
+  const [visualStyle, setVisualStyle] =
+    useState<VisualizationStyle>("highlight");
+  const [searchContent, setSearchContent] = useState("");
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [result, setResult] = useState<string>("");
+  const [coordinates, setCoordinates] = useState<
+    Array<{ x0: number; y0: number; x1: number; y1: number }>
+  >([]);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  async function handleSubmit(e?: React.FormEvent, forcedInput?: string) {
-    e?.preventDefault();
-    const textToSubmit = forcedInput || input;
-    if (!textToSubmit.trim() || isLoading) return;
+  const clearImage = () => {
+    setImage(null);
+    setImagePreview("");
+    setResult("");
+    setCoordinates([]);
+  };
 
-    const userMessage: MessageWithCitations = {
-      role: "user",
-      content: textToSubmit.trim(),
-    };
+  const handleSubmit = async () => {
+    if (!image || !imagePreview) {
+      alert("Please select an image");
+      return;
+    }
 
-    setIsLoading(true);
-    setInput("");
-    setMessages((prev) => [...prev, userMessage]);
-    setLoadingState({ status: 'thinking', message: 'Thinking...' });
+    if (!searchContent.trim()) {
+      alert("Please enter content to search for");
+      return;
+    }
+
+    setResult("Processing...");
+    setCoordinates([]);
+    setImagePreview("");
+
+    // Extract base64 data and mime type from the data URL
+    const [header, base64Data] = imagePreview.split(",");
+    const mimeType = header.match(/data:(.*?);/)?.[1] || "image/jpeg";
+
+    const response = await findContentCoordinatesWithGeminiAction(
+      base64Data,
+      searchContent
+    );
+
+    if (response.isSuccess && response.data) {
+      setResult("");
+      setCoordinates(response.data.coordinates);
+    } else {
+      setResult(`Error: ${response.message}`);
+    }
+  };
+
+  const handleExampleClick = async (example: (typeof EXAMPLES)[number]) => {
+    setSearchContent(example.text);
+    setCoordinates([]);
+    setImagePreview("");
+    setResult("Processing...");
 
     try {
-      const response = await perplexityAction({
-        model: "sonar",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a helpful AI assistant. Be concise and clear in your responses.",
-          },
-          ...messages.map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-          userMessage,
-        ],
-        temperature: 0.7,
-        top_p: 0.9,
+      const response = await fetch(example.imagePath);
+      const blob = await response.blob();
+      const file = new File([blob], `example${example.id}.jpg`, {
+        type: "image/jpeg",
       });
 
-      if (response.isSuccess && response.data) {
-        const content = response.data.choices[0].message.content;
-        const citations = response.data.citations;
+      setImage(file);
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const dataUrl = reader.result as string;
+        setImagePreview(dataUrl);
 
-        const citedIndexes = Array.from(content.matchAll(/\[(\d+)\]/g))
-          .map((match) => parseInt(match[1]))
-          .filter((index) => index <= citations.length);
+        // Extract base64 data and trigger search
+        const [header, base64Data] = dataUrl.split(",");
 
-        const citationContents: Record<number, ExtractedCitation> = {};
+        const searchResponse = await findContentCoordinatesWithGeminiAction(
+          base64Data,
+          example.text
+        );
 
-        if (citedIndexes.length > 0) {
-          const firstIndex = citedIndexes[0];
-          try {
-            const url = citations[firstIndex - 1];
-            setLoadingState({ 
-              status: 'taking-screenshot', 
-              message: 'Taking screenshot of cited webpage...' 
-            });
-            
-            const screenshotResult = await takeScreenshot({
-              url,
-            });
+        if (searchResponse.isSuccess && searchResponse.data) {
+          setResult("");
+          setCoordinates(searchResponse.data.coordinates);
+        } else {
+          setResult(`Error: ${searchResponse.message}`);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Error loading example image:", error);
+      setResult(`Error: Failed to load example image`);
+    }
+  };
 
-            if (!screenshotResult.isSuccess || !screenshotResult.data) {
-              throw new Error("Failed to take screenshot");
-            }
+  useEffect(() => {
+    if (!imagePreview || !canvasRef.current || coordinates.length === 0) return;
 
-            setLoadingState({ 
-              status: 'processing-citations', 
-              message: 'Processing citations with AI...' 
-            });
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-            const coordinatesResult =
-              await findContentCoordinatesWithGeminiAction(
-                screenshotResult.data.replace(/^data:image\/\w+;base64,/, ""),
-                content
-              );
+    const img = new Image();
+    img.onload = () => {
+      // Set canvas size with padding
+      canvas.width = img.width + 100;
+      canvas.height = img.height + 100;
 
-            if (coordinatesResult.isSuccess && coordinatesResult.data) {
-              citationContents[firstIndex] = {
-                url: citations[firstIndex - 1],
-                relevantContent: coordinatesResult.data.text,
-                explanation: "Found using Gemini Vision",
-                screenshotUrl: screenshotResult.data,
-                highlights: [
-                  {
-                    text: coordinatesResult.data.text,
-                    bbox: coordinatesResult.data.coordinates,
-                  },
-                ],
-              };
-            }
-          } catch (error) {
-            console.error("Error processing citation:", error);
-          }
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw image with offset
+      ctx.drawImage(img, 80, 20);
+
+      // Draw bounding boxes based on selected style
+      coordinates.forEach((box, index) => {
+        const width = (box.x1 - box.x0) * img.width;
+        const height = (box.y1 - box.y0) * img.height;
+        const x = box.x0 * img.width + 80;
+        const y = box.y0 * img.height + 20;
+        const color = COLORS[index % COLORS.length];
+
+        ctx.save();
+
+        if (visualStyle === "highlight") {
+          // Highlight style
+          ctx.fillStyle = `${color}33`; // 20% opacity
+          ctx.strokeStyle = `${color}66`; // 40% opacity
+          ctx.lineWidth = 2;
+
+          // Draw highlight background
+          ctx.fillRect(x, y, width, height);
+
+          // Draw highlight border
+          ctx.strokeRect(x, y, width, height);
+        } else {
+          // Box style
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 3;
+
+          // Draw box
+          ctx.strokeRect(x, y, width, height);
+
+          // Draw corner marks
+          const cornerLength = Math.min(width, height) * 0.2;
+          ctx.beginPath();
+
+          // Top-left corner
+          ctx.moveTo(x, y + cornerLength);
+          ctx.lineTo(x, y);
+          ctx.lineTo(x + cornerLength, y);
+
+          // Top-right corner
+          ctx.moveTo(x + width - cornerLength, y);
+          ctx.lineTo(x + width, y);
+          ctx.lineTo(x + width, y + cornerLength);
+
+          // Bottom-right corner
+          ctx.moveTo(x + width, y + height - cornerLength);
+          ctx.lineTo(x + width, y + height);
+          ctx.lineTo(x + width - cornerLength, y + height);
+
+          // Bottom-left corner
+          ctx.moveTo(x + cornerLength, y + height);
+          ctx.lineTo(x, y + height);
+          ctx.lineTo(x, y + height - cornerLength);
+
+          ctx.stroke();
         }
 
-        const assistantMessage: MessageWithCitations = {
-          ...response.data.choices[0].message,
-          citations,
-          citationContents,
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Sorry, I encountered an error. Please try again.",
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-      setLoadingState({ status: 'idle', message: '' });
-    }
-  }
+        ctx.restore();
+      });
+    };
 
-  if (!isGridReady) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#1C1C1C]" />
-    );
-  }
+    img.src = imagePreview;
+  }, [imagePreview, coordinates, visualStyle]);
 
   return (
     <div className="relative flex min-h-screen flex-col bg-[#1C1C1C] text-white">
-      <FlickeringGrid
-        className="absolute inset-0 z-0"
-        squareSize={4}
-        gridGap={6}
-        color="#6B7280"
-        maxOpacity={0.15}
-        flickerChance={0.7}
-      />
+      <div className="relative z-10 container mx-auto max-w-4xl p-4">
+        <h1 className="mb-8 text-4xl font-medium text-white/90">VLM BB</h1>
 
-      <div className="relative z-10 flex min-h-screen flex-col">
-        {messages.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center px-4">
-            <h1 className="mb-8 text-4xl font-medium text-white/90">
-              What do you want to know?
-            </h1>
+        <div className="space-y-6">
+          <div className="flex gap-4">
+            <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <SelectTrigger className="flex-1 bg-[#2A2A2A]/80 border-0 text-white/90">
+                <SelectValue placeholder="Select a model" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#2A2A2A] text-white/90">
+                {GEMINI_MODELS.map((model) => (
+                  <SelectItem key={model.value} value={model.value}>
+                    {model.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            <div className="w-full max-w-2xl">
-              <div className="relative flex h-[64px] items-center rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmit();
-                    }
-                  }}
-                  placeholder="Ask anything..."
-                  className="w-full border-0 bg-transparent px-6 pr-14 text-xl text-white/90 placeholder:text-white/40 focus:outline-none focus:ring-0"
-                  disabled={isLoading}
-                />
-                <div className="absolute right-3">
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={isLoading}
-                    onClick={() => handleSubmit()}
-                    className="size-[38px] rounded-lg bg-white/10 p-0 hover:bg-white/20"
-                  >
-                    {isLoading ? (
-                      <Loader2 className="size-4 animate-spin text-white/80" />
-                    ) : (
-                      <svg
-                        width="15"
-                        height="15"
-                        viewBox="0 0 15 15"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="text-white/80"
-                      >
-                        <path
-                          d="M1 7.5H14M14 7.5L8 1.5M14 7.5L8 13.5"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    )}
-                  </Button>
-                </div>
-              </div>
+            <Select
+              value={visualStyle}
+              onValueChange={(value: VisualizationStyle) =>
+                setVisualStyle(value)
+              }
+            >
+              <SelectTrigger className="w-[200px] bg-[#2A2A2A]/80 border-0 text-white/90">
+                <SelectValue placeholder="Select style" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#2A2A2A] text-white/90">
+                {VISUALIZATION_STYLES.map((style) => (
+                  <SelectItem key={style.value} value={style.value}>
+                    {style.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-              <div className="mt-8">
-                <div className="grid grid-cols-3 gap-4">
-                  <button
-                    onClick={() =>
-                      handleExampleClick(
-                        "What's the height of the Burj Khalifa?"
-                      )
-                    }
-                    className="rounded-lg bg-[#2A2A2A]/80 px-4 py-3 text-sm text-white/80 transition-colors hover:bg-[#2A2A2A] hover:text-white/90"
-                  >
-                    What&apos;s the height of the Burj Khalifa?
-                  </button>
-                  <button
-                    onClick={() =>
-                      handleExampleClick("When was Richard Nixon impeached?")
-                    }
-                    className="rounded-lg bg-[#2A2A2A]/80 px-4 py-3 text-sm text-white/80 transition-colors hover:bg-[#2A2A2A] hover:text-white/90"
-                  >
-                    When was Richard Nixon impeached?
-                  </button>
-                  <button
-                    onClick={() =>
-                      handleExampleClick("How many parameters does GPT-4 have?")
-                    }
-                    className="rounded-lg bg-[#2A2A2A]/80 px-4 py-3 text-sm text-white/80 transition-colors hover:bg-[#2A2A2A] hover:text-white/90"
-                  >
-                    How many parameters does GPT-4 have?
-                  </button>
-                </div>
-              </div>
+          <div className="flex flex-col gap-2">
+            <div className="relative flex h-[64px] items-center rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm px-4">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="w-full text-white/90 bg-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-white/10 file:text-white/90 hover:file:bg-white/20"
+              />
+            </div>
+            <Button
+              onClick={clearImage}
+              variant="outline"
+              className="bg-transparent text-white/60 border-white/20 hover:bg-white/5 hover:text-white/90 transition-colors"
+            >
+              Clear Image
+            </Button>
+          </div>
+
+          <div className="relative flex flex-col rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm">
+            <Textarea
+              value={searchContent}
+              onChange={(e) => setSearchContent(e.target.value)}
+              placeholder="Enter the content you want to find in the image"
+              className="min-h-[100px] resize-none border-0 bg-transparent p-4 pb-14 text-lg text-white/90 placeholder:text-white/40 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
+            <div className="absolute bottom-3 left-3 right-3">
+              <Button
+                onClick={handleSubmit}
+                className="w-full bg-blue-500/80 hover:bg-blue-500/90 text-white/90 border-0 rounded-lg h-[38px] text-sm font-medium transition-colors"
+              >
+                Find Content
+              </Button>
             </div>
           </div>
-        ) : (
-          <>
-            <div className="mb-20 flex-1 space-y-6 p-4 pt-8 md:p-8 md:pt-12">
-              {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`mx-auto max-w-2xl ${
-                    message.role === "user"
-                      ? "flex justify-end"
-                      : "flex justify-start"
-                  }`}
-                >
-                  <div
-                    className={`relative flex w-fit max-w-[85%] flex-col rounded-2xl px-4 py-3.5 text-lg md:px-5 md:py-4 ${
-                      message.role === "user"
-                        ? "bg-blue-500/20 text-white/90 backdrop-blur-sm"
-                        : "bg-[#2A2A2A]/80 text-white/80 backdrop-blur-sm"
-                    }`}
-                  >
-                    <MessageContent
-                      message={message}
-                      renderContent={(content) =>
-                        message.role === "assistant" ? (
-                          <div className="prose prose-invert prose-headings:mb-2 prose-headings:mt-2 prose-p:my-1 prose-pre:my-0 prose-ul:my-2 prose-li:my-0.5 max-w-none">
-                            <ReactMarkdown>{content}</ReactMarkdown>
-                          </div>
-                        ) : (
-                          content
-                        )
-                      }
-                    />
-                  </div>
-                </div>
-              ))}
-              
-              {loadingState.status !== 'idle' && (
-                <LoadingStatus loadingState={loadingState} />
-              )}
-            </div>
 
-            <div className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-[#1C1C1C]/80 backdrop-blur-sm p-4">
-              <div className="relative mx-auto max-w-2xl">
-                <div className="relative flex h-[64px] items-center rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm">
-                  <input
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSubmit();
-                      }
-                    }}
-                    placeholder="Ask anything..."
-                    className="w-full border-0 bg-transparent px-6 pr-14 text-xl text-white/90 placeholder:text-white/40 focus:outline-none focus:ring-0"
-                    disabled={isLoading}
-                  />
-                  <div className="absolute right-3">
-                    <Button
-                      type="submit"
-                      size="sm"
-                      disabled={isLoading}
-                      onClick={() => handleSubmit()}
-                      className="size-[38px] rounded-lg bg-white/10 p-0 hover:bg-white/20"
-                    >
-                      {isLoading ? (
-                        <Loader2 className="size-4 animate-spin text-white/80" />
-                      ) : (
-                        <svg
-                          width="15"
-                          height="15"
-                          viewBox="0 0 15 15"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="text-white/80"
-                        >
-                          <path
-                            d="M1 7.5H14M14 7.5L8 1.5M14 7.5L8 13.5"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
+          <div className="mt-4">
+            <h2 className="mb-3 text-center">
+              <span className="italic text-sm font-light tracking-wide text-white/40">
+                Try finding these examples
+              </span>
+            </h2>
+            <div className="grid grid-cols-3 gap-3">
+              {EXAMPLES.map((example) => (
+                <button
+                  key={example.id}
+                  onClick={() => handleExampleClick(example)}
+                  className="group rounded-lg border border-white/5 bg-[#2A2A2A]/20 px-4 py-3 text-sm text-white/50 transition-colors hover:border-white/10 hover:bg-[#2A2A2A]/40 hover:text-white/90"
+                >
+                  {example.label}
+                </button>
+              ))}
             </div>
-          </>
-        )}
+          </div>
+
+          {result && (
+            <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
+              <pre className="whitespace-pre-wrap text-white/80 text-sm">
+                {result}
+              </pre>
+            </div>
+          )}
+
+          {imagePreview && (
+            <div className="mt-4 rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
+              <canvas ref={canvasRef} className="h-auto max-w-full" />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
