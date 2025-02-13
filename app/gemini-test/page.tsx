@@ -43,16 +43,19 @@ const COLORS = [
 const EXAMPLES = [
   {
     id: 1,
-    text: "richest behaviour intelligence",
+    label: "Find multiple phrases",
+    text: 'get separte BBs for "richest behaviour intelligence" and "unified risk platform" and their content',
     imagePath: "/examples/example1.jpg"
   },
   {
     id: 2,
+    label: "Find risk platform",
     text: "unified risk platform",
     imagePath: "/examples/example2.jpg"
   },
   {
     id: 3,
+    label: "Find OCR text",
     text: "OCR is now solved",
     imagePath: "/examples/example3.jpg"
   },
@@ -324,8 +327,7 @@ export default function GeminiTest() {
                   onClick={() => handleExampleClick(example)}
                   className="group rounded-lg border border-white/5 bg-[#2A2A2A]/20 px-4 py-3 text-sm text-white/50 transition-colors hover:border-white/10 hover:bg-[#2A2A2A]/40 hover:text-white/90"
                 >
-                  <div className="text-xs text-white/30 group-hover:text-white/50">Example {example.id}</div>
-                  &ldquo;{example.text}&rdquo;
+                  {example.label}
                 </button>
               ))}
             </div>
