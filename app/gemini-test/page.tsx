@@ -13,6 +13,13 @@ import {
 import { Card } from "@/components/ui/card";
 import { findContentCoordinatesWithGeminiAction } from "@/actions/gemini-actions";
 
+const VISUALIZATION_STYLES = [
+  { value: "highlight", label: "Highlight Style" },
+  { value: "box", label: "Bounding Box Style" },
+] as const;
+
+type VisualizationStyle = typeof VISUALIZATION_STYLES[number]["value"];
+
 const GEMINI_MODELS = [
   { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
   {
@@ -36,6 +43,7 @@ const COLORS = [
 
 export default function GeminiTest() {
   const [selectedModel, setSelectedModel] = useState(GEMINI_MODELS[0].value);
+  const [visualStyle, setVisualStyle] = useState<VisualizationStyle>("highlight");
   const [searchContent, setSearchContent] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
@@ -113,59 +121,101 @@ export default function GeminiTest() {
       // Draw image with offset
       ctx.drawImage(img, 80, 20);
 
-      // Draw bounding boxes as highlights
+      // Draw bounding boxes based on selected style
       coordinates.forEach((box, index) => {
         const width = (box.x1 - box.x0) * img.width;
         const height = (box.y1 - box.y0) * img.height;
+        const x = box.x0 * img.width + 80;
+        const y = box.y0 * img.height + 20;
+        const color = COLORS[index % COLORS.length];
 
-        // Create highlight effect
         ctx.save();
 
-        // Set highlight style
-        ctx.fillStyle = `${COLORS[index % COLORS.length]}33`; // 20% opacity
-        ctx.strokeStyle = `${COLORS[index % COLORS.length]}66`; // 40% opacity
-        ctx.lineWidth = 2;
+        if (visualStyle === "highlight") {
+          // Highlight style
+          ctx.fillStyle = `${color}33`; // 20% opacity
+          ctx.strokeStyle = `${color}66`; // 40% opacity
+          ctx.lineWidth = 2;
 
-        // Draw highlight background
-        ctx.fillRect(
-          box.x0 * img.width + 80,
-          box.y0 * img.height + 20,
-          width,
-          height
-        );
+          // Draw highlight background
+          ctx.fillRect(x, y, width, height);
 
-        // Draw highlight border
-        ctx.strokeRect(
-          box.x0 * img.width + 80,
-          box.y0 * img.height + 20,
-          width,
-          height
-        );
+          // Draw highlight border
+          ctx.strokeRect(x, y, width, height);
+        } else {
+          // Box style
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 3;
+          
+          // Draw box
+          ctx.strokeRect(x, y, width, height);
+          
+          // Draw corner marks
+          const cornerLength = Math.min(width, height) * 0.2;
+          ctx.beginPath();
+          
+          // Top-left corner
+          ctx.moveTo(x, y + cornerLength);
+          ctx.lineTo(x, y);
+          ctx.lineTo(x + cornerLength, y);
+          
+          // Top-right corner
+          ctx.moveTo(x + width - cornerLength, y);
+          ctx.lineTo(x + width, y);
+          ctx.lineTo(x + width, y + cornerLength);
+          
+          // Bottom-right corner
+          ctx.moveTo(x + width, y + height - cornerLength);
+          ctx.lineTo(x + width, y + height);
+          ctx.lineTo(x + width - cornerLength, y + height);
+          
+          // Bottom-left corner
+          ctx.moveTo(x + cornerLength, y + height);
+          ctx.lineTo(x, y + height);
+          ctx.lineTo(x, y + height - cornerLength);
+          
+          ctx.stroke();
+        }
 
         ctx.restore();
       });
     };
 
     img.src = imagePreview;
-  }, [imagePreview, coordinates]);
+  }, [imagePreview, coordinates, visualStyle]);
 
   return (
     <div className="container mx-auto max-w-4xl p-4">
       <h1 className="mb-4 text-2xl font-bold">VLM Citation Demo</h1>
 
       <div className="space-y-4">
-        <Select value={selectedModel} onValueChange={setSelectedModel}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select a model" />
-          </SelectTrigger>
-          <SelectContent>
-            {GEMINI_MODELS.map((model) => (
-              <SelectItem key={model.value} value={model.value}>
-                {model.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex gap-4">
+          <Select value={selectedModel} onValueChange={setSelectedModel}>
+            <SelectTrigger className="flex-1">
+              <SelectValue placeholder="Select a model" />
+            </SelectTrigger>
+            <SelectContent>
+              {GEMINI_MODELS.map((model) => (
+                <SelectItem key={model.value} value={model.value}>
+                  {model.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={visualStyle} onValueChange={(value: VisualizationStyle) => setVisualStyle(value)}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select style" />
+            </SelectTrigger>
+            <SelectContent>
+              {VISUALIZATION_STYLES.map((style) => (
+                <SelectItem key={style.value} value={style.value}>
+                  {style.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         <div className="flex flex-col gap-2">
           <input
