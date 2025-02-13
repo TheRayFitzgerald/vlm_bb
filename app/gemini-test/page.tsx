@@ -40,6 +40,24 @@ const COLORS = [
   "#F0E68C", // Khaki
 ];
 
+const EXAMPLES = [
+  {
+    id: 1,
+    text: "richest behaviour intelligence",
+    imagePath: "/examples/example1.jpg"
+  },
+  {
+    id: 2,
+    text: "unified risk platform",
+    imagePath: "/examples/example2.jpg"
+  },
+  {
+    id: 3,
+    text: "OCR is now solved",
+    imagePath: "/examples/example3.jpg"
+  },
+] as const;
+
 export default function GeminiTest() {
   const [selectedModel, setSelectedModel] = useState(GEMINI_MODELS[0].value);
   const [visualStyle, setVisualStyle] = useState<VisualizationStyle>("highlight");
@@ -98,6 +116,45 @@ export default function GeminiTest() {
       setCoordinates(response.data.coordinates);
     } else {
       setResult(`Error: ${response.message}`);
+    }
+  };
+
+  const handleExampleClick = async (example: typeof EXAMPLES[number]) => {
+    setSearchContent(example.text);
+    
+    try {
+      const response = await fetch(example.imagePath);
+      const blob = await response.blob();
+      const file = new File([blob], `example${example.id}.jpg`, { type: 'image/jpeg' });
+      
+      setImage(file);
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const dataUrl = reader.result as string;
+        setImagePreview(dataUrl);
+        
+        // Extract base64 data and trigger search
+        const [header, base64Data] = dataUrl.split(",");
+        setResult("Processing...");
+        
+        const searchResponse = await findContentCoordinatesWithGeminiAction(
+          base64Data,
+          example.text
+        );
+
+        if (searchResponse.isSuccess && searchResponse.data) {
+          setResult(
+            `Found ${searchResponse.data.coordinates.length} matches for: "${searchResponse.data.text}"\n\nAPI Response:\n${JSON.stringify(searchResponse, null, 2)}`
+          );
+          setCoordinates(searchResponse.data.coordinates);
+        } else {
+          setResult(`Error: ${searchResponse.message}`);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error loading example image:', error);
+      setResult(`Error: Failed to load example image`);
     }
   };
 
@@ -261,27 +318,16 @@ export default function GeminiTest() {
               </span>
             </h2>
             <div className="grid grid-cols-3 gap-3">
-              <button
-                onClick={() => setSearchContent("richest behaviour intelligence")}
-                className="group rounded-lg border border-white/5 bg-[#2A2A2A]/20 px-4 py-3 text-sm text-white/50 transition-colors hover:border-white/10 hover:bg-[#2A2A2A]/40 hover:text-white/90"
-              >
-                <div className="text-xs text-white/30 group-hover:text-white/50">Example 1</div>
-                &ldquo;richest behaviour intelligence&rdquo;
-              </button>
-              <button
-                onClick={() => setSearchContent("unified risk platform")}
-                className="group rounded-lg border border-white/5 bg-[#2A2A2A]/20 px-4 py-3 text-sm text-white/50 transition-colors hover:border-white/10 hover:bg-[#2A2A2A]/40 hover:text-white/90"
-              >
-                <div className="text-xs text-white/30 group-hover:text-white/50">Example 2</div>
-                &ldquo;unified risk platform&rdquo;
-              </button>
-              <button
-                onClick={() => setSearchContent("OCR is now solved")}
-                className="group rounded-lg border border-white/5 bg-[#2A2A2A]/20 px-4 py-3 text-sm text-white/50 transition-colors hover:border-white/10 hover:bg-[#2A2A2A]/40 hover:text-white/90"
-              >
-                <div className="text-xs text-white/30 group-hover:text-white/50">Example 3</div>
-                &ldquo;OCR is now solved&rdquo;
-              </button>
+              {EXAMPLES.map((example) => (
+                <button
+                  key={example.id}
+                  onClick={() => handleExampleClick(example)}
+                  className="group rounded-lg border border-white/5 bg-[#2A2A2A]/20 px-4 py-3 text-sm text-white/50 transition-colors hover:border-white/10 hover:bg-[#2A2A2A]/40 hover:text-white/90"
+                >
+                  <div className="text-xs text-white/30 group-hover:text-white/50">Example {example.id}</div>
+                  &ldquo;{example.text}&rdquo;
+                </button>
+              ))}
             </div>
           </div>
 
