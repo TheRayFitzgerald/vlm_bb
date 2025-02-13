@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { processImageWithGeminiAction } from "@/actions/gemini-actions";
+import { findContentCoordinatesWithGeminiAction } from "@/actions/gemini-actions";
 
 const GEMINI_MODELS = [
   { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
@@ -36,13 +36,11 @@ const COLORS = [
 
 export default function GeminiTest() {
   const [selectedModel, setSelectedModel] = useState(GEMINI_MODELS[0].value);
-  const [prompt, setPrompt] = useState(
-    "Return bounding boxes as JSON arrays [ymin, xmin, ymax, xmax]",
-  );
+  const [searchContent, setSearchContent] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [result, setResult] = useState<string>("");
-  const [coordinates, setCoordinates] = useState<number[][]>([]);
+  const [coordinates, setCoordinates] = useState<Array<{ x0: number; y0: number; x1: number; y1: number }>>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,16 +68,27 @@ export default function GeminiTest() {
       return;
     }
 
+    if (!searchContent.trim()) {
+      alert("Please enter content to search for");
+      return;
+    }
+
     setResult("Processing...");
-    const response = await processImageWithGeminiAction(
-      imagePreview,
-      prompt,
-      selectedModel,
+    
+    // Extract base64 data and mime type from the data URL
+    const [header, base64Data] = imagePreview.split(",");
+    const mimeType = header.match(/data:(.*?);/)?.[1] || "image/jpeg";
+
+    const response = await findContentCoordinatesWithGeminiAction(
+      base64Data,
+      searchContent
     );
 
     if (response.isSuccess && response.data) {
-      setResult(response.data.text);
-      setCoordinates(response.data.coordinates || []);
+      setResult(
+        `Found ${response.data.coordinates.length} matches for: "${response.data.text}"\n\nAPI Response:\n${JSON.stringify(response, null, 2)}`
+      );
+      setCoordinates(response.data.coordinates);
     } else {
       setResult(`Error: ${response.message}`);
     }
@@ -106,9 +115,8 @@ export default function GeminiTest() {
 
       // Draw bounding boxes as highlights
       coordinates.forEach((box, index) => {
-        const [ymin, xmin, ymax, xmax] = box.map((coord) => coord / 1000);
-        const width = (xmax - xmin) * img.width;
-        const height = (ymax - ymin) * img.height;
+        const width = (box.x1 - box.x0) * img.width;
+        const height = (box.y1 - box.y0) * img.height;
 
         // Create highlight effect
         ctx.save();
@@ -120,18 +128,18 @@ export default function GeminiTest() {
 
         // Draw highlight background
         ctx.fillRect(
-          xmin * img.width + 80,
-          ymin * img.height + 20,
+          box.x0 * img.width + 80,
+          box.y0 * img.height + 20,
           width,
-          height,
+          height
         );
 
         // Draw highlight border
         ctx.strokeRect(
-          xmin * img.width + 80,
-          ymin * img.height + 20,
+          box.x0 * img.width + 80,
+          box.y0 * img.height + 20,
           width,
-          height,
+          height
         );
 
         ctx.restore();
@@ -143,7 +151,7 @@ export default function GeminiTest() {
 
   return (
     <div className="container mx-auto max-w-4xl p-4">
-      <h1 className="mb-4 text-2xl font-bold">Gemini Bounding Box Test</h1>
+      <h1 className="mb-4 text-2xl font-bold">VLM Citation Demo</h1>
 
       <div className="space-y-4">
         <Select value={selectedModel} onValueChange={setSelectedModel}>
@@ -172,13 +180,13 @@ export default function GeminiTest() {
         </div>
 
         <Textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Enter your prompt"
+          value={searchContent}
+          onChange={(e) => setSearchContent(e.target.value)}
+          placeholder="Enter the content you want to find in the image"
           className="h-32"
         />
 
-        <Button onClick={handleSubmit}>Process</Button>
+        <Button onClick={handleSubmit}>Find Content</Button>
 
         {result && (
           <Card className="p-4">

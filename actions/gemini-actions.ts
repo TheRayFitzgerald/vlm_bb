@@ -72,7 +72,7 @@ function extractCoordinates(text: string): number[][] {
 export async function findContentCoordinatesWithGeminiAction(
   base64Image: string,
   content: string
-): Promise<ActionState<{ text: string; coordinates: { x0: number; y0: number; x1: number; y1: number } }>> {
+): Promise<ActionState<{ text: string; coordinates: Array<{ x0: number; y0: number; x1: number; y1: number }> }>> {
   try {
     if (!process.env.GEMINI_API_KEY) {
       throw new Error("Google API key not found")
@@ -83,10 +83,10 @@ export async function findContentCoordinatesWithGeminiAction(
 
     const prompt = `Return bounding boxes as JSON arrays [ymin, xmin, ymax, xmax].
 
-Return at least one bounding box that captures details about "${content}".
-Ensure the bounding box is solely focussed on capturing the specific content.
-This is important - we want to cite the exact content, not the surrounding text.
-Only return more than one bounding box if needed.`
+Return bounding boxes that capture details about "${content}".
+Return multiple bounding boxes if there are multiple instances of the content.
+Ensure each bounding box is solely focussed on capturing the specific content.
+This is important - we want to cite the exact content, not the surrounding text.`
 
     const result = await model.generateContent([
       prompt,
@@ -106,19 +106,20 @@ Only return more than one bounding box if needed.`
       throw new Error("No coordinates found in response")
     }
 
-    const [y0_bottom, x0, y1_top, x1] = coordinates[0].map(v => v / 1000)
+    // Convert all coordinates to the x0,y0,x1,y1 format
+    const formattedCoordinates = coordinates.map(([y0_bottom, x0, y1_top, x1]) => ({
+      x0: x0 / 1000,
+      y0: y0_bottom / 1000,
+      x1: x1 / 1000,
+      y1: y1_top / 1000
+    }))
     
     return {
       isSuccess: true,
       message: "Successfully found content coordinates",
       data: {
         text: content,
-        coordinates: {
-          x0: x0,
-          y0: y0_bottom,
-          x1: x1,
-          y1: y1_top
-        }
+        coordinates: formattedCoordinates
       }
     }
   } catch (error) {
