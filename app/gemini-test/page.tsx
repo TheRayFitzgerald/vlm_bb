@@ -102,6 +102,8 @@ export default function GeminiTest() {
     }
 
     setResult("Processing...");
+    setCoordinates([]);
+    setImagePreview("");
     
     // Extract base64 data and mime type from the data URL
     const [header, base64Data] = imagePreview.split(",");
@@ -124,6 +126,9 @@ export default function GeminiTest() {
 
   const handleExampleClick = async (example: typeof EXAMPLES[number]) => {
     setSearchContent(example.text);
+    setCoordinates([]);
+    setImagePreview("");
+    setResult("Processing...");
     
     try {
       const response = await fetch(example.imagePath);
@@ -138,7 +143,6 @@ export default function GeminiTest() {
         
         // Extract base64 data and trigger search
         const [header, base64Data] = dataUrl.split(",");
-        setResult("Processing...");
         
         const searchResponse = await findContentCoordinatesWithGeminiAction(
           base64Data,
