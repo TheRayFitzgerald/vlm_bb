@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -179,11 +179,11 @@ export default function GeminiTest() {
           </Button>
         </div>
 
-        <Textarea
+        <Input
           value={searchContent}
           onChange={(e) => setSearchContent(e.target.value)}
           placeholder="Enter the content you want to find in the image"
-          className="h-32"
+          className="w-full"
         />
 
         <Button onClick={handleSubmit}>Find Content</Button>

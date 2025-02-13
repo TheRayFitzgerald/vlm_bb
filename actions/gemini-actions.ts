@@ -83,10 +83,15 @@ export async function findContentCoordinatesWithGeminiAction(
 
     const prompt = `Return bounding boxes as JSON arrays [ymin, xmin, ymax, xmax].
 
-Return bounding boxes that capture details about "${content}".
-Return multiple bounding boxes if there are multiple instances of the content.
-Ensure each bounding box is solely focussed on capturing the specific content.
-This is important - we want to cite the exact content, not the surrounding text.`
+Find distinct instances of "${content}" in the image.
+Rules for bounding boxes:
+1. Each box should capture a complete, distinct instance of the content
+2. Avoid overlapping boxes - if content instances overlap, choose the clearer/more complete instance
+3. Focus on capturing the exact content, not surrounding context
+4. Ensure boxes are as tight as possible around the content
+5. If the same content appears multiple times, prioritize instances that are clearly separated
+
+Return the boxes in order of confidence/clarity.`
 
     const result = await model.generateContent([
       prompt,
