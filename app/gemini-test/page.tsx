@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -297,17 +297,17 @@ export default function GeminiTest() {
             </Button>
           </div>
 
-          <div className="relative flex h-[48px] items-center rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm">
-            <Input
+          <div className="relative flex flex-col rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm">
+            <Textarea
               value={searchContent}
               onChange={(e) => setSearchContent(e.target.value)}
               placeholder="Enter the content you want to find in the image"
-              className="w-full border-0 bg-transparent px-6 text-lg text-white/90 placeholder:text-white/40 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="min-h-[100px] resize-none border-0 bg-transparent p-4 pb-14 text-lg text-white/90 placeholder:text-white/40 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
             />
-            <div className="absolute right-2">
+            <div className="absolute bottom-3 left-3 right-3">
               <Button 
                 onClick={handleSubmit}
-                className="bg-blue-500/80 hover:bg-blue-500/90 text-white/90 border-0 rounded-lg px-6 h-[38px] text-sm font-medium transition-colors"
+                className="w-full bg-blue-500/80 hover:bg-blue-500/90 text-white/90 border-0 rounded-lg h-[38px] text-sm font-medium transition-colors"
               >
                 Find Content
               </Button>
