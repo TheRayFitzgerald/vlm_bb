@@ -254,6 +254,37 @@ export default function GeminiTest() {
             </div>
           </div>
 
+          <div className="mt-4">
+            <h2 className="mb-3 text-center">
+              <span className="italic text-sm font-light tracking-wide text-white/40">
+                Try finding these examples
+              </span>
+            </h2>
+            <div className="grid grid-cols-3 gap-3">
+              <button
+                onClick={() => setSearchContent("richest behaviour intelligence")}
+                className="group rounded-lg border border-white/5 bg-[#2A2A2A]/20 px-4 py-3 text-sm text-white/50 transition-colors hover:border-white/10 hover:bg-[#2A2A2A]/40 hover:text-white/90"
+              >
+                <div className="text-xs text-white/30 group-hover:text-white/50">Example 1</div>
+                &ldquo;richest behaviour intelligence&rdquo;
+              </button>
+              <button
+                onClick={() => setSearchContent("unified risk platform")}
+                className="group rounded-lg border border-white/5 bg-[#2A2A2A]/20 px-4 py-3 text-sm text-white/50 transition-colors hover:border-white/10 hover:bg-[#2A2A2A]/40 hover:text-white/90"
+              >
+                <div className="text-xs text-white/30 group-hover:text-white/50">Example 2</div>
+                &ldquo;unified risk platform&rdquo;
+              </button>
+              <button
+                onClick={() => setSearchContent("OCR is now solved")}
+                className="group rounded-lg border border-white/5 bg-[#2A2A2A]/20 px-4 py-3 text-sm text-white/50 transition-colors hover:border-white/10 hover:bg-[#2A2A2A]/40 hover:text-white/90"
+              >
+                <div className="text-xs text-white/30 group-hover:text-white/50">Example 3</div>
+                &ldquo;OCR is now solved&rdquo;
+              </button>
+            </div>
+          </div>
+
           {result && (
             <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
               <pre className="whitespace-pre-wrap text-white/80 text-sm">{result}</pre>
