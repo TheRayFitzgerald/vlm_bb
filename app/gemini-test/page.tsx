@@ -10,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card } from "@/components/ui/card";
 import { findContentCoordinatesWithGeminiAction } from "@/actions/gemini-actions";
 
 const VISUALIZATION_STYLES = [
@@ -185,70 +184,88 @@ export default function GeminiTest() {
   }, [imagePreview, coordinates, visualStyle]);
 
   return (
-    <div className="container mx-auto max-w-4xl p-4">
-      <h1 className="mb-4 text-2xl font-bold">VLM Citation Demo</h1>
+    <div className="relative flex min-h-screen flex-col bg-[#1C1C1C] text-white">
+      <div className="relative z-10 container mx-auto max-w-4xl p-4">
+        <h1 className="mb-8 text-4xl font-medium text-white/90">
+          VLM BB
+        </h1>
 
-      <div className="space-y-4">
-        <div className="flex gap-4">
-          <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger className="flex-1">
-              <SelectValue placeholder="Select a model" />
-            </SelectTrigger>
-            <SelectContent>
-              {GEMINI_MODELS.map((model) => (
-                <SelectItem key={model.value} value={model.value}>
-                  {model.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="space-y-6">
+          <div className="flex gap-4">
+            <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <SelectTrigger className="flex-1 bg-[#2A2A2A]/80 border-0 text-white/90">
+                <SelectValue placeholder="Select a model" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#2A2A2A] text-white/90">
+                {GEMINI_MODELS.map((model) => (
+                  <SelectItem key={model.value} value={model.value}>
+                    {model.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={visualStyle} onValueChange={(value: VisualizationStyle) => setVisualStyle(value)}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Select style" />
-            </SelectTrigger>
-            <SelectContent>
-              {VISUALIZATION_STYLES.map((style) => (
-                <SelectItem key={style.value} value={style.value}>
-                  {style.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageChange}
-            className="rounded border p-2"
-          />
-          <Button onClick={clearImage} variant="outline">
-            Clear Image
-          </Button>
-        </div>
-
-        <Input
-          value={searchContent}
-          onChange={(e) => setSearchContent(e.target.value)}
-          placeholder="Enter the content you want to find in the image"
-          className="w-full"
-        />
-
-        <Button onClick={handleSubmit}>Find Content</Button>
-
-        {result && (
-          <Card className="p-4">
-            <pre className="whitespace-pre-wrap">{result}</pre>
-          </Card>
-        )}
-
-        {imagePreview && (
-          <div className="mt-4">
-            <canvas ref={canvasRef} className="h-auto max-w-full" />
+            <Select value={visualStyle} onValueChange={(value: VisualizationStyle) => setVisualStyle(value)}>
+              <SelectTrigger className="w-[200px] bg-[#2A2A2A]/80 border-0 text-white/90">
+                <SelectValue placeholder="Select style" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#2A2A2A] text-white/90">
+                {VISUALIZATION_STYLES.map((style) => (
+                  <SelectItem key={style.value} value={style.value}>
+                    {style.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        )}
+
+          <div className="flex flex-col gap-2">
+            <div className="relative flex h-[64px] items-center rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm px-4">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="w-full text-white/90 bg-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-white/10 file:text-white/90 hover:file:bg-white/20"
+              />
+            </div>
+            <Button 
+              onClick={clearImage} 
+              variant="outline" 
+              className="bg-transparent text-white/60 border-white/20 hover:bg-white/5 hover:text-white/90 transition-colors"
+            >
+              Clear Image
+            </Button>
+          </div>
+
+          <div className="relative flex h-[48px] items-center rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm">
+            <Input
+              value={searchContent}
+              onChange={(e) => setSearchContent(e.target.value)}
+              placeholder="Enter the content you want to find in the image"
+              className="w-full border-0 bg-transparent px-6 text-lg text-white/90 placeholder:text-white/40 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
+            <div className="absolute right-2">
+              <Button 
+                onClick={handleSubmit}
+                className="bg-blue-500/80 hover:bg-blue-500/90 text-white/90 border-0 rounded-lg px-6 h-[38px] text-sm font-medium transition-colors"
+              >
+                Find Content
+              </Button>
+            </div>
+          </div>
+
+          {result && (
+            <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
+              <pre className="whitespace-pre-wrap text-white/80 text-sm">{result}</pre>
+            </div>
+          )}
+
+          {imagePreview && (
+            <div className="mt-4 rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
+              <canvas ref={canvasRef} className="h-auto max-w-full" />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
