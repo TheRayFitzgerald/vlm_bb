@@ -329,7 +329,7 @@ export default function GeminiTest() {
         <h1 className="mb-8 text-4xl font-medium text-white/90">VLM BB</h1>
         <p className="mb-8 -mt-6 text-lg text-white/60">Visual Language Model Bounding Box Detection</p>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div>
             <Select 
               value={selectedModel} 
@@ -371,6 +371,12 @@ export default function GeminiTest() {
             <Textarea
               value={searchContent}
               onChange={(e) => setSearchContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
               placeholder="Enter the content you want to find in the image"
               className="min-h-[100px] resize-none border-0 bg-transparent p-4 pb-14 text-lg text-white/90 placeholder:text-white/40 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
             />
@@ -391,10 +397,10 @@ export default function GeminiTest() {
             </div>
           </div>
 
-          <div className="mt-4">
+          <div className="-mt-2">
             <h2 className="mb-3 text-center">
               <span className="italic text-sm font-light tracking-wide text-white/40">
-                Try finding these examples
+                Try these examples
               </span>
             </h2>
             <div className="grid grid-cols-3 gap-3">
