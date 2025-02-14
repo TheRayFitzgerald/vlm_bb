@@ -246,6 +246,7 @@ export default function GeminiTest() {
     <div className="relative flex min-h-screen flex-col bg-[#1C1C1C] text-white">
       <div className="relative z-10 container mx-auto max-w-4xl p-4">
         <h1 className="mb-8 text-4xl font-medium text-white/90">VLM BB</h1>
+        <p className="mb-8 -mt-6 text-lg text-white/60">Visual Language Model Bounding Box Detection</p>
 
         <div className="space-y-6">
           <div className="flex gap-4">
