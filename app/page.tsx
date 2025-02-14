@@ -291,7 +291,7 @@ export default function GeminiTest() {
           ctx.strokeRect(x, y, width, height);
         } else {
           ctx.strokeStyle = color;
-          ctx.lineWidth = 3;
+          ctx.lineWidth = 2;
           ctx.strokeRect(x, y, width, height);
 
           const cornerLength = Math.min(width, height) * 0.2;
