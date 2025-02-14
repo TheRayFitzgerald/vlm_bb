@@ -324,10 +324,17 @@ export default function GeminiTest() {
               placeholder="Enter the content you want to find in the image"
               className="min-h-[100px] resize-none border-0 bg-transparent p-4 pb-14 text-lg text-white/90 placeholder:text-white/40 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
             />
-            <div className="absolute bottom-3 left-3 right-3">
+            <div className="absolute bottom-3 left-3 right-3 flex gap-2">
+              <Button
+                onClick={() => setSearchContent("")}
+                className="bg-transparent hover:bg-white/5 text-white/60 border-white/20 text-sm font-medium transition-colors"
+                variant="outline"
+              >
+                Clear
+              </Button>
               <Button
                 onClick={handleSubmit}
-                className="w-full bg-blue-500/80 hover:bg-blue-500/90 text-white/90 border-0 rounded-lg h-[38px] text-sm font-medium transition-colors"
+                className="flex-1 bg-blue-500/80 hover:bg-blue-500/90 text-white/90 border-0 rounded-lg h-[38px] text-sm font-medium transition-colors"
               >
                 Find Content
               </Button>
