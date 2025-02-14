@@ -56,7 +56,7 @@ const EXAMPLES = [
 ] as const;
 
 export default function GeminiTest() {
-  const [selectedModel, setSelectedModel] = useState(GEMINI_MODELS[0].value);
+  const [selectedModel, setSelectedModel] = useState(GEMINI_MODELS[1].value);
   const [visualStyle, setVisualStyle] =
     useState<VisualizationStyle>("highlight");
   const [searchContent, setSearchContent] = useState("");
