@@ -420,7 +420,13 @@ export default function GeminiTest() {
                       Document Preview
                     </h3>
                   </div>
-                  <canvas ref={canvasRef} className="h-auto w-full object-contain" />
+                  {status.stage !== 'complete' ? (
+                    <div className="flex items-center justify-center py-20">
+                      <Loader2 className="h-6 w-6 animate-spin text-white/40" />
+                    </div>
+                  ) : (
+                    <canvas ref={canvasRef} className="h-auto w-full object-contain" />
+                  )}
                 </div>
               </div>
 
