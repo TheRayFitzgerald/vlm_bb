@@ -42,7 +42,7 @@ const EXAMPLES = [
   {
     id: 1,
     label: "Find invoice items",
-    text: "Find each line item in the invoice list. Return separate bounding boxes for each item, including its description and amount.",
+    text: "For each line item in the invoice, extract the quantity, description, unit price, and amount.",
     imagePath: "/examples/example2.jpg",
   },
   {
