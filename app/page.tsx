@@ -19,11 +19,15 @@ const VISUALIZATION_STYLES = [
 
 type VisualizationStyle = (typeof VISUALIZATION_STYLES)[number]["value"];
 
+const DEFAULT_MODEL = "gemini-2.0-pro-exp-02-05";
+
 const GEMINI_MODELS = [
   { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
   { value: "gemini-2.0-pro-exp-02-05", label: "Gemini 2.0 Pro Exp" },
   { value: "gemini-1.5-pro-latest", label: "Gemini 1.5 Pro" },
-];
+] as const;
+
+type GeminiModel = (typeof GEMINI_MODELS)[number]["value"];
 
 const COLORS = [
   "#FFD700", // Gold
@@ -56,7 +60,7 @@ const EXAMPLES = [
 ] as const;
 
 export default function GeminiTest() {
-  const [selectedModel, setSelectedModel] = useState(GEMINI_MODELS[1].value);
+  const [selectedModel, setSelectedModel] = useState<GeminiModel>(DEFAULT_MODEL);
   const [visualStyle, setVisualStyle] =
     useState<VisualizationStyle>("highlight");
   const [searchContent, setSearchContent] = useState("");
@@ -250,7 +254,10 @@ export default function GeminiTest() {
 
         <div className="space-y-6">
           <div className="flex gap-4">
-            <Select value={selectedModel} onValueChange={setSelectedModel}>
+            <Select 
+              value={selectedModel} 
+              onValueChange={(value: GeminiModel) => setSelectedModel(value)}
+            >
               <SelectTrigger className="flex-1 bg-[#2A2A2A]/80 border-0 text-white/90">
                 <SelectValue placeholder="Select a model" />
               </SelectTrigger>
