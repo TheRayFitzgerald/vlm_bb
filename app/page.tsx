@@ -104,7 +104,6 @@ export default function GeminiTest() {
 
     setResult("Processing...");
     setCoordinates([]);
-    setImagePreview("");
 
     // Extract base64 data and mime type from the data URL
     const [header, base64Data] = imagePreview.split(",");
