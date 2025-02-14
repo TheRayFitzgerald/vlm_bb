@@ -379,30 +379,6 @@ export default function GeminiTest() {
                   </div>
                 </div>
               )}
-
-              {boxes.length > 0 && (
-                <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
-                  <h3 className="mb-3 text-sm font-medium text-white/60">
-                    Matched Text Locations
-                  </h3>
-                  <div className="space-y-2">
-                    {boxes.map((box, index) => (
-                      <div
-                        key={index}
-                        className="flex items-start gap-2 rounded-lg bg-[#1C1C1C]/40 p-3"
-                      >
-                        <div
-                          className="mt-1 h-3 w-3 flex-shrink-0 rounded-full"
-                          style={{
-                            backgroundColor: COLORS[index % COLORS.length]
-                          }}
-                        />
-                        <p className="text-sm text-white/90">{box.text}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
