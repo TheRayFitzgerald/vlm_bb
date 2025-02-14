@@ -269,7 +269,7 @@ export default function GeminiTest() {
         <p className="mb-8 -mt-6 text-lg text-white/60">Visual Language Model Bounding Box Detection</p>
 
         <div className="space-y-6">
-          <div className="flex gap-4">
+          <div>
             <Select 
               value={selectedModel} 
               onValueChange={(value: GeminiModel) => setSelectedModel(value)}
@@ -281,24 +281,6 @@ export default function GeminiTest() {
                 {GEMINI_MODELS.map((model) => (
                   <SelectItem key={model.value} value={model.value}>
                     {model.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={visualStyle}
-              onValueChange={(value: VisualizationStyle) =>
-                setVisualStyle(value)
-              }
-            >
-              <SelectTrigger className="w-[200px] bg-[#2A2A2A]/80 border-0 text-white/90">
-                <SelectValue placeholder="Select style" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#2A2A2A] text-white/90">
-                {VISUALIZATION_STYLES.map((style) => (
-                  <SelectItem key={style.value} value={style.value}>
-                    {style.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -376,8 +358,30 @@ export default function GeminiTest() {
           )}
 
           {imagePreview && (
-            <div className="mt-4 rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
-              <canvas ref={canvasRef} className="h-auto max-w-full" />
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center justify-end">
+                <Select
+                  value={visualStyle}
+                  onValueChange={(value: VisualizationStyle) =>
+                    setVisualStyle(value)
+                  }
+                >
+                  <SelectTrigger className="w-[200px] bg-[#2A2A2A]/80 border-0 text-white/90">
+                    <SelectValue placeholder="Select style" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#2A2A2A] text-white/90">
+                    {VISUALIZATION_STYLES.map((style) => (
+                      <SelectItem key={style.value} value={style.value}>
+                        {style.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
+                <canvas ref={canvasRef} className="h-auto max-w-full" />
+              </div>
             </div>
           )}
         </div>
