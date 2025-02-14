@@ -108,9 +108,11 @@ export default function GeminiTest() {
 
     setResult("Processing...");
     setCoordinates([]);
+    const savedImagePreview = imagePreview;
+    setImagePreview("");
 
     // Extract base64 data and mime type from the data URL
-    const [header, base64Data] = imagePreview.split(",");
+    const [header, base64Data] = savedImagePreview.split(",");
     const mimeType = header.match(/data:(.*?);/)?.[1] || "image/jpeg";
 
     const response = await findContentCoordinatesWithGeminiAction(
@@ -121,8 +123,10 @@ export default function GeminiTest() {
     if (response.isSuccess && response.data) {
       setResult("");
       setCoordinates(response.data.coordinates);
+      setImagePreview(savedImagePreview);
     } else {
       setResult(`Error: ${response.message}`);
+      setImagePreview(savedImagePreview);
     }
   };
 
@@ -130,6 +134,7 @@ export default function GeminiTest() {
     setSearchContent(example.text);
     setCoordinates([]);
     setResult("Processing...");
+    setImagePreview("");
 
     try {
       const response = await fetch(example.imagePath);
@@ -150,7 +155,6 @@ export default function GeminiTest() {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const dataUrl = reader.result as string;
-        setImagePreview(dataUrl);
 
         // Extract base64 data and trigger search
         const [header, base64Data] = dataUrl.split(",");
@@ -163,8 +167,10 @@ export default function GeminiTest() {
         if (searchResponse.isSuccess && searchResponse.data) {
           setResult("");
           setCoordinates(searchResponse.data.coordinates);
+          setImagePreview(dataUrl);
         } else {
           setResult(`Error: ${searchResponse.message}`);
+          setImagePreview(dataUrl);
         }
       };
       reader.readAsDataURL(file);
