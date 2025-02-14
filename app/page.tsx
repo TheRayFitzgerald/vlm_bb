@@ -71,6 +71,7 @@ export default function GeminiTest() {
     Array<{ x0: number; y0: number; x1: number; y1: number }>
   >([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -89,6 +90,9 @@ export default function GeminiTest() {
     setImagePreview("");
     setResult("");
     setCoordinates([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleSubmit = async () => {
@@ -125,7 +129,6 @@ export default function GeminiTest() {
   const handleExampleClick = async (example: (typeof EXAMPLES)[number]) => {
     setSearchContent(example.text);
     setCoordinates([]);
-    setImagePreview("");
     setResult("Processing...");
 
     try {
@@ -135,7 +138,14 @@ export default function GeminiTest() {
         type: "image/jpeg",
       });
 
+      // Update both the state and the file input
       setImage(file);
+      if (fileInputRef.current) {
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        fileInputRef.current.files = dataTransfer.files;
+      }
+
       const reader = new FileReader();
       reader.onloadend = async () => {
         const dataUrl = reader.result as string;
@@ -291,6 +301,7 @@ export default function GeminiTest() {
           <div className="flex flex-col gap-2">
             <div className="relative flex h-[64px] items-center rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm px-4">
               <input
+                ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
