@@ -1,26 +1,26 @@
-"use server"
+"use server";
 
-import { GoogleGenerativeAI } from "@google/generative-ai"
-import { ActionState } from "@/types"
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { ActionState } from "@/types";
 
 interface GeminiResponse {
-  text: string
-  coordinates?: number[][]
+  text: string;
+  coordinates?: number[][];
 }
 
 interface BoundingBoxContent {
-  coordinates: { x0: number; y0: number; x1: number; y1: number }
-  text: string
+  coordinates: { x0: number; y0: number; x1: number; y1: number };
+  text: string;
 }
 
 interface ExtractedField {
-  label: string
-  value: string
+  label: string;
+  value: string;
 }
 
 interface SearchContext {
-  value: string
-  label: string
+  value: string;
+  label: string;
 }
 
 export async function processImageWithGeminiAction(
@@ -30,75 +30,87 @@ export async function processImageWithGeminiAction(
 ): Promise<ActionState<GeminiResponse>> {
   try {
     if (!process.env.GEMINI_API_KEY) {
-      throw new Error("Google API key not found")
+      throw new Error("Google API key not found");
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-    const geminiModel = genAI.getGenerativeModel({ model })
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const geminiModel = genAI.getGenerativeModel({ model });
 
     // Convert base64 data URL to inline data
-    const base64Data = image.split(",")[1]
-    const mimeType = image.split(";")[0].split(":")[1]
+    const base64Data = image.split(",")[1];
+    const mimeType = image.split(";")[0].split(":")[1];
 
     const result = await geminiModel.generateContent([
       prompt,
       {
         inlineData: {
           data: base64Data,
-          mimeType
-        }
-      }
-    ])
+          mimeType,
+        },
+      },
+    ]);
 
-    const response = await result.response
-    const text = response.text()
+    const response = await result.response;
+    const text = response.text();
 
     // Extract coordinates from the response
-    const coordinates = extractCoordinates(text)
+    const coordinates = extractCoordinates(text);
 
     return {
       isSuccess: true,
       message: "Successfully processed image",
       data: {
         text,
-        coordinates
-      }
-    }
+        coordinates,
+      },
+    };
   } catch (error) {
-    console.error("Error processing image with Gemini:", error)
+    console.error("Error processing image with Gemini:", error);
     return {
       isSuccess: false,
-      message: error instanceof Error ? error.message : "Failed to process image"
-    }
+      message:
+        error instanceof Error ? error.message : "Failed to process image",
+    };
   }
 }
 
 function extractCoordinates(text: string): number[][] {
-  const regex = /\[?\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\]?/g
-  const matches = Array.from(text.matchAll(regex))
-  return matches.map(match => [
+  const regex = /\[?\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\]?/g;
+  const matches = Array.from(text.matchAll(regex));
+  return matches.map((match) => [
     parseInt(match[1]),
     parseInt(match[2]),
     parseInt(match[3]),
-    parseInt(match[4])
-  ])
+    parseInt(match[4]),
+  ]);
 }
 
 export async function findContentCoordinatesWithGeminiAction(
   base64Image: string,
   content: string
-): Promise<ActionState<{ query: string; boxes: BoundingBoxContent[]; debug?: { rawResponse: string } }>> {
+): Promise<
+  ActionState<{
+    query: string;
+    boxes: BoundingBoxContent[];
+    debug?: { rawResponse: string };
+  }>
+> {
   try {
     if (!process.env.GEMINI_API_KEY) {
-      throw new Error("Google API key not found")
+      throw new Error("Google API key not found");
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-pro-exp-02-05" })
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-pro-exp-02-05",
+    });
 
     // First, let's parse the instruction to handle both direct searches and complex extractions
-    const isDirectSearch = content.includes('"') && !content.toLowerCase().includes('extract') && !content.toLowerCase().includes('find')
-    const prompt = isDirectSearch 
+    const isDirectSearch =
+      content.includes('"') &&
+      !content.toLowerCase().includes("extract") &&
+      !content.toLowerCase().includes("find");
+    const prompt = isDirectSearch
       ? `Return bounding boxes and their content as JSON arrays in the format: [ymin, xmin, ymax, xmax, "extracted text"].
 
 Task: Find the following specific phrases in the image: ${content}
@@ -131,25 +143,26 @@ Example of expected response for a form field:
 
 IMPORTANT: Your response MUST contain arrays in the format [ymin, xmin, ymax, xmax, "extracted text"].
 Return one array for each piece of information found.
-Do not explain or describe - only return the arrays.`
+Do not explain or describe - only return the arrays.`;
 
     const result = await model.generateContent([
       prompt,
       {
         inlineData: {
           data: base64Image,
-          mimeType: "image/jpeg"
-        }
-      }
-    ])
+          mimeType: "image/jpeg",
+        },
+      },
+    ]);
 
-    const response = await result.response
-    const text = response.text()
+    const response = await result.response;
+    const text = response.text();
 
     // Updated regex to capture text content
-    const regex = /\[?\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*"([^"]+)"\s*\]?/g
-    const matches = Array.from(text.matchAll(regex))
-    
+    const regex =
+      /\[?\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*"([^"]+)"\s*\]?/g;
+    const matches = Array.from(text.matchAll(regex));
+
     if (matches.length === 0) {
       return {
         isSuccess: false,
@@ -158,23 +171,23 @@ Do not explain or describe - only return the arrays.`
           query: content,
           boxes: [],
           debug: {
-            rawResponse: text
-          }
-        }
-      }
+            rawResponse: text,
+          },
+        },
+      };
     }
 
     // Convert coordinates and include extracted text
-    const boxes = matches.map(match => ({
+    const boxes = matches.map((match) => ({
       coordinates: {
         x0: parseInt(match[2]) / 1000,
         y0: parseInt(match[1]) / 1000,
         x1: parseInt(match[4]) / 1000,
-        y1: parseInt(match[3]) / 1000
+        y1: parseInt(match[3]) / 1000,
       },
-      text: match[5]
-    }))
-    
+      text: match[5],
+    }));
+
     return {
       isSuccess: true,
       message: "Successfully found content coordinates and text",
@@ -182,87 +195,95 @@ Do not explain or describe - only return the arrays.`
         query: content,
         boxes,
         debug: {
-          rawResponse: text
-        }
-      }
-    }
+          rawResponse: text,
+        },
+      },
+    };
   } catch (error) {
-    console.error("Error processing with Gemini:", error)
+    console.error("Error processing with Gemini:", error);
     return {
       isSuccess: false,
-      message: error instanceof Error ? error.message : "Failed to find content coordinates and text",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to find content coordinates and text",
       data: {
         query: content,
         boxes: [],
         debug: {
-          rawResponse: error instanceof Error ? error.message : "Unknown error"
-        }
-      }
-    }
+          rawResponse: error instanceof Error ? error.message : "Unknown error",
+        },
+      },
+    };
   }
 }
 
 export async function extractTextFromImageAction(
   base64Image: string,
   instruction: string
-): Promise<ActionState<{ fields: ExtractedField[]; debug?: { rawResponse: string } }>> {
+): Promise<
+  ActionState<{ fields: ExtractedField[]; debug?: { rawResponse: string } }>
+> {
   try {
     if (!process.env.GEMINI_API_KEY) {
-      throw new Error("Google API key not found")
+      throw new Error("Google API key not found");
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-pro-exp-02-05" })
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-pro-exp-02-05",
+    });
 
-    const prompt = `Task: ${instruction}
+    const prompt = `
+    
+      Given the following INSTRUCTION: ${instruction}.
 
-Extract all relevant information from the image following these rules:
-1. Find each distinct piece of requested information
-2. Be thorough - extract all relevant text, even if partially visible
-3. For each field, capture the complete text
-4. If multiple instances exist, choose the clearest/most complete one
-5. Include any contextual information that helps identify the field
+      Your task is to extract ONLY the specific information requested in the above instruction.
 
-Return the results as key-value pairs in this format:
-[label]: [extracted text]
+      Rules for extraction:
+      1. Focus exclusively on finding the information mentioned in the instruction
+      2. Extract the complete text for each requested field
+      3. Be precise with numbers, dates, and identifiers
+      4. Include any relevant units or symbols
+      5. If multiple instances exist, choose the clearest one
 
-Example response for a form:
-Form Number: 5500-SF
-Start Date: 01/01/2023
-End Date: 12/31/2023
-Plan Liabilities (Start): $1,234,567
-Plan Liabilities (End): $2,345,678
+      Format your response as key-value pairs:
+      [label]: [extracted text]
 
-IMPORTANT:
-- Extract ALL relevant information
-- Be precise with numbers, dates, and identifiers
-- Include units and symbols if present
-- Return ONLY the key-value pairs, no other text or explanations`
+      Example format:
+      Form Number: 5500-SF
+      Start Date: 01/01/2023
+
+      IMPORTANT:
+      - Only extract information specifically requested in the instruction
+      - Do not include any additional fields or explanatory text
+      - Return exactly one value per requested field
+      - Maintain the exact [label]: [value] format`;
 
     const result = await model.generateContent([
-      prompt,
       {
         inlineData: {
           data: base64Image,
-          mimeType: "image/jpeg"
-        }
-      }
-    ])
+          mimeType: "image/jpeg",
+        },
+      },
+      prompt,
+    ]);
 
-    const response = await result.response
-    const text = response.text()
+    const response = await result.response;
+    const text = response.text();
 
     // Parse the response into fields
     const fields = text
-      .split('\n')
-      .filter(line => line.includes(':'))
-      .map(line => {
-        const [label, ...valueParts] = line.split(':')
+      .split("\n")
+      .filter((line) => line.includes(":"))
+      .map((line) => {
+        const [label, ...valueParts] = line.split(":");
         return {
           label: label.trim(),
-          value: valueParts.join(':').trim()
-        }
-      })
+          value: valueParts.join(":").trim(),
+        };
+      });
 
     if (fields.length === 0) {
       return {
@@ -270,9 +291,9 @@ IMPORTANT:
         message: "No fields extracted from the image",
         data: {
           fields: [],
-          debug: { rawResponse: text }
-        }
-      }
+          debug: { rawResponse: text },
+        },
+      };
     }
 
     return {
@@ -280,19 +301,22 @@ IMPORTANT:
       message: "Successfully extracted text from image",
       data: {
         fields,
-        debug: { rawResponse: text }
-      }
-    }
+        debug: { rawResponse: text },
+      },
+    };
   } catch (error) {
-    console.error("Error extracting text:", error)
+    console.error("Error extracting text:", error);
     return {
       isSuccess: false,
-      message: error instanceof Error ? error.message : "Failed to extract text",
+      message:
+        error instanceof Error ? error.message : "Failed to extract text",
       data: {
         fields: [],
-        debug: { rawResponse: error instanceof Error ? error.message : "Unknown error" }
-      }
-    }
+        debug: {
+          rawResponse: error instanceof Error ? error.message : "Unknown error",
+        },
+      },
+    };
   }
 }
 
@@ -302,88 +326,106 @@ export async function findBoundingBoxesForTextAction(
 ): Promise<ActionState<{ boxes: BoundingBoxContent[]; debug?: { rawResponse: string } }>> {
   try {
     if (!process.env.GEMINI_API_KEY) {
-      throw new Error("Google API key not found")
+      throw new Error("Google API key not found");
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-pro-exp-02-05" })
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-pro-exp-02-05",
+    });
 
-    const contextList = searchTexts.map(({ label, value }) => 
-      `"${value}" (labeled as "${label}")`
-    ).join(', ')
+    const contextList = searchTexts
+      .map(({ label, value }) => `"${value}" (from field "${label}")`)
+      .join("\n");
 
-    const prompt = `Find the exact location of these form fields in the image: ${contextList}
+    const prompt = `TASK: Find the exact location of each value in the image.
 
-Return bounding boxes as JSON arrays in the format: [ymin, xmin, ymax, xmax, "matched text"]
+VALUES TO LOCATE:
+${contextList}
 
-Rules:
-1. Each box should capture the complete text value
-2. Boxes should be as tight as possible around the value
-3. Return one array per found text
-4. Coordinates should be in range 0-1000
-5. Use the label context to help identify the correct text
-6. Only return boxes for the actual values, not the labels
+OUTPUT FORMAT:
+Return bounding boxes as arrays: [ymin, xmin, ymax, xmax, "matched text"]
+Coordinates must be in range 0-1000
 
-Example response for "January 15, 2024" (labeled as "Start Date"):
+RULES:
+1. Create ONE bounding box for each value listed above
+2. Box must contain the COMPLETE value text
+3. Box must be as TIGHT as possible around the value
+4. Use the field name (in parentheses) to identify the correct text
+5. Only box the value itself, not its label or surrounding text
+6. If multiple instances exist, choose the clearest one
+
+EXAMPLE:
+For value "January 15, 2024" (from field "Start Date"):
 [120, 450, 150, 600, "January 15, 2024"]
 
-IMPORTANT: Only return the arrays, no other text or explanations.`
+IMPORTANT:
+- Return exactly one array per value
+- Include the exact matched text in quotes
+- Only output the arrays, no other text
+- Ensure coordinates are precise`;
 
     const result = await model.generateContent([
-      prompt,
       {
         inlineData: {
           data: base64Image,
-          mimeType: "image/jpeg"
-        }
-      }
-    ])
+          mimeType: "image/jpeg",
+        },
+      },
+      prompt,
+    ]);
 
-    const response = await result.response
-    const text = response.text()
+    const response = await result.response;
+    const text = response.text();
 
     // Extract coordinates and text
-    const regex = /\[?\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*"([^"]+)"\s*\]?/g
-    const matches = Array.from(text.matchAll(regex))
-    
+    const regex =
+      /\[?\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*"([^"]+)"\s*\]?/g;
+    const matches = Array.from(text.matchAll(regex));
+
     if (matches.length === 0) {
       return {
         isSuccess: false,
         message: "No bounding boxes found in response",
         data: {
           boxes: [],
-          debug: { rawResponse: text }
-        }
-      }
+          debug: { rawResponse: text },
+        },
+      };
     }
 
-    const boxes = matches.map(match => ({
+    const boxes = matches.map((match) => ({
       coordinates: {
         x0: parseInt(match[2]) / 1000,
         y0: parseInt(match[1]) / 1000,
         x1: parseInt(match[4]) / 1000,
-        y1: parseInt(match[3]) / 1000
+        y1: parseInt(match[3]) / 1000,
       },
-      text: match[5]
-    }))
-    
+      text: match[5],
+    }));
+
     return {
       isSuccess: true,
       message: "Successfully found bounding boxes",
       data: {
         boxes,
-        debug: { rawResponse: text }
-      }
-    }
+        debug: { rawResponse: text },
+      },
+    };
   } catch (error) {
-    console.error("Error finding bounding boxes:", error)
+    console.error("Error finding bounding boxes:", error);
     return {
       isSuccess: false,
-      message: error instanceof Error ? error.message : "Failed to find bounding boxes",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to find bounding boxes",
       data: {
         boxes: [],
-        debug: { rawResponse: error instanceof Error ? error.message : "Unknown error" }
-      }
-    }
+        debug: {
+          rawResponse: error instanceof Error ? error.message : "Unknown error",
+        },
+      },
+    };
   }
-} 
+}

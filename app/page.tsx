@@ -54,7 +54,7 @@ const EXAMPLES = [
   {
     id: 3,
     label: "Find multiple phrases",
-    text: 'get separte BBs for "richest behaviour intelligence" and "unified risk platform" and their content',
+    text: 'Extract the sections for "richest behaviour intelligence" and "unified risk platform" and their content',
     imagePath: "/examples/example1.jpg",
   },
 ] as const;
