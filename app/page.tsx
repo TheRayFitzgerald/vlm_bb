@@ -43,19 +43,19 @@ const EXAMPLES = [
     id: 1,
     label: "Find invoice items",
     text: "Find each line item in the invoice list. Return separate bounding boxes for each item, including its description and amount.",
-    imagePath: "/examples/example2.jpg",
+    imagePath: "/examples/invoice.jpg",
   },
   {
     id: 2,
     label: "Extract tax form fields",
     text: "Extract the form number, fiscal start date, fiscal end date, and the plan liabilities beginning of the year and end of the year.",
-    imagePath: "/examples/example3.jpg",
+    imagePath: "/examples/tax_form.jpg",
   },
   {
     id: 3,
     label: "Find multiple phrases",
     text: 'get separte BBs for "richest behaviour intelligence" and "unified risk platform" and their content',
-    imagePath: "/examples/example1.jpg",
+    imagePath: "/examples/text_doc.jpg",
   },
 ] as const;
 
@@ -134,7 +134,8 @@ export default function GeminiTest() {
     try {
       const response = await fetch(example.imagePath);
       const blob = await response.blob();
-      const file = new File([blob], `example${example.id}.jpg`, {
+      const filename = example.imagePath.split('/').pop() || '';
+      const file = new File([blob], filename, {
         type: "image/jpeg",
       });
 
