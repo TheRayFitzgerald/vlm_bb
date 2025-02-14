@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { findContentCoordinatesWithGeminiAction } from "@/actions/gemini-actions";
+import { extractTextFromImageAction, findBoundingBoxesForTextAction } from "@/actions/gemini-actions";
 
 const VISUALIZATION_STYLES = [
   { value: "highlight", label: "Highlight Style" },
@@ -59,6 +59,16 @@ const EXAMPLES = [
   },
 ] as const;
 
+type BoundingBoxContent = {
+  coordinates: { x0: number; y0: number; x1: number; y1: number }
+  text: string
+}
+
+type ExtractedField = {
+  label: string
+  value: string
+}
+
 export default function GeminiTest() {
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(DEFAULT_MODEL);
   const [visualStyle, setVisualStyle] =
@@ -67,9 +77,8 @@ export default function GeminiTest() {
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [result, setResult] = useState<string>("");
-  const [coordinates, setCoordinates] = useState<
-    Array<{ x0: number; y0: number; x1: number; y1: number }>
-  >([]);
+  const [boxes, setBoxes] = useState<BoundingBoxContent[]>([]);
+  const [extractedFields, setExtractedFields] = useState<ExtractedField[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,7 +97,40 @@ export default function GeminiTest() {
     setImage(null);
     setImagePreview("");
     setResult("");
-    setCoordinates([]);
+    setBoxes([]);
+    setExtractedFields([]);
+  };
+
+  const processImage = async (base64Data: string, content: string) => {
+    setResult("Processing...");
+    setBoxes([]);
+    setExtractedFields([]);
+
+    // Step 1: Extract text fields
+    const extractResponse = await extractTextFromImageAction(base64Data, content);
+    
+    if (!extractResponse.isSuccess || !extractResponse.data) {
+      setResult(`Error extracting text: ${extractResponse.message}\n\nDebug Information:\n${extractResponse.data?.debug?.rawResponse || 'No debug info available'}`);
+      return;
+    }
+
+    setExtractedFields(extractResponse.data.fields);
+
+    // Step 2: Find bounding boxes for the extracted values
+    // Include both values and labels for better context
+    const searchTexts = extractResponse.data.fields.map(field => ({
+      value: field.value,
+      label: field.label
+    }));
+    const boxesResponse = await findBoundingBoxesForTextAction(base64Data, searchTexts);
+
+    if (!boxesResponse.isSuccess || !boxesResponse.data) {
+      setResult(`Error finding bounding boxes: ${boxesResponse.message}\n\nDebug Information:\n${boxesResponse.data?.debug?.rawResponse || 'No debug info available'}`);
+      return;
+    }
+
+    setBoxes(boxesResponse.data.boxes);
+    setResult("");
   };
 
   const handleSubmit = async () => {
@@ -102,30 +144,14 @@ export default function GeminiTest() {
       return;
     }
 
-    setResult("Processing...");
-    setCoordinates([]);
-    setImagePreview("");
-
-    // Extract base64 data and mime type from the data URL
     const [header, base64Data] = imagePreview.split(",");
-    const mimeType = header.match(/data:(.*?);/)?.[1] || "image/jpeg";
-
-    const response = await findContentCoordinatesWithGeminiAction(
-      base64Data,
-      searchContent
-    );
-
-    if (response.isSuccess && response.data) {
-      setResult("");
-      setCoordinates(response.data.coordinates);
-    } else {
-      setResult(`Error: ${response.message}`);
-    }
+    await processImage(base64Data, searchContent);
   };
 
   const handleExampleClick = async (example: (typeof EXAMPLES)[number]) => {
     setSearchContent(example.text);
-    setCoordinates([]);
+    setBoxes([]);
+    setExtractedFields([]);
     setImagePreview("");
     setResult("Processing...");
 
@@ -141,21 +167,8 @@ export default function GeminiTest() {
       reader.onloadend = async () => {
         const dataUrl = reader.result as string;
         setImagePreview(dataUrl);
-
-        // Extract base64 data and trigger search
         const [header, base64Data] = dataUrl.split(",");
-
-        const searchResponse = await findContentCoordinatesWithGeminiAction(
-          base64Data,
-          example.text
-        );
-
-        if (searchResponse.isSuccess && searchResponse.data) {
-          setResult("");
-          setCoordinates(searchResponse.data.coordinates);
-        } else {
-          setResult(`Error: ${searchResponse.message}`);
-        }
+        await processImage(base64Data, example.text);
       };
       reader.readAsDataURL(file);
     } catch (error) {
@@ -165,7 +178,7 @@ export default function GeminiTest() {
   };
 
   useEffect(() => {
-    if (!imagePreview || !canvasRef.current || coordinates.length === 0) return;
+    if (!imagePreview || !canvasRef.current || boxes.length === 0) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
@@ -173,65 +186,48 @@ export default function GeminiTest() {
 
     const img = new Image();
     img.onload = () => {
-      // Set canvas size with padding
       canvas.width = img.width + 100;
       canvas.height = img.height + 100;
 
-      // Clear canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw image with offset
       ctx.drawImage(img, 80, 20);
 
-      // Draw bounding boxes based on selected style
-      coordinates.forEach((box, index) => {
-        const width = (box.x1 - box.x0) * img.width;
-        const height = (box.y1 - box.y0) * img.height;
-        const x = box.x0 * img.width + 80;
-        const y = box.y0 * img.height + 20;
+      boxes.forEach((box, index) => {
+        const { coordinates } = box;
+        const width = (coordinates.x1 - coordinates.x0) * img.width;
+        const height = (coordinates.y1 - coordinates.y0) * img.height;
+        const x = coordinates.x0 * img.width + 80;
+        const y = coordinates.y0 * img.height + 20;
         const color = COLORS[index % COLORS.length];
 
         ctx.save();
 
         if (visualStyle === "highlight") {
-          // Highlight style
-          ctx.fillStyle = `${color}33`; // 20% opacity
-          ctx.strokeStyle = `${color}66`; // 40% opacity
+          ctx.fillStyle = `${color}33`;
+          ctx.strokeStyle = `${color}66`;
           ctx.lineWidth = 2;
-
-          // Draw highlight background
           ctx.fillRect(x, y, width, height);
-
-          // Draw highlight border
           ctx.strokeRect(x, y, width, height);
         } else {
-          // Box style
           ctx.strokeStyle = color;
           ctx.lineWidth = 3;
-
-          // Draw box
           ctx.strokeRect(x, y, width, height);
 
-          // Draw corner marks
           const cornerLength = Math.min(width, height) * 0.2;
           ctx.beginPath();
 
-          // Top-left corner
           ctx.moveTo(x, y + cornerLength);
           ctx.lineTo(x, y);
           ctx.lineTo(x + cornerLength, y);
 
-          // Top-right corner
           ctx.moveTo(x + width - cornerLength, y);
           ctx.lineTo(x + width, y);
           ctx.lineTo(x + width, y + cornerLength);
 
-          // Bottom-right corner
           ctx.moveTo(x + width, y + height - cornerLength);
           ctx.lineTo(x + width, y + height);
           ctx.lineTo(x + width - cornerLength, y + height);
 
-          // Bottom-left corner
           ctx.moveTo(x + cornerLength, y + height);
           ctx.lineTo(x, y + height);
           ctx.lineTo(x, y + height - cornerLength);
@@ -244,7 +240,7 @@ export default function GeminiTest() {
     };
 
     img.src = imagePreview;
-  }, [imagePreview, coordinates, visualStyle]);
+  }, [imagePreview, boxes, visualStyle]);
 
   return (
     <div className="relative flex min-h-screen flex-col bg-[#1C1C1C] text-white">
@@ -345,15 +341,68 @@ export default function GeminiTest() {
 
           {result && (
             <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
-              <pre className="whitespace-pre-wrap text-white/80 text-sm">
+              <pre className="whitespace-pre-wrap text-white/80 text-sm font-mono">
                 {result}
               </pre>
             </div>
           )}
 
           {imagePreview && (
-            <div className="mt-4 rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
-              <canvas ref={canvasRef} className="h-auto max-w-full" />
+            <div className="space-y-4">
+              <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
+                <canvas ref={canvasRef} className="h-auto max-w-full" />
+              </div>
+
+              {extractedFields.length > 0 && (
+                <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
+                  <h3 className="mb-3 text-sm font-medium text-white/60">
+                    Extracted Information
+                  </h3>
+                  <div className="space-y-2">
+                    {extractedFields.map((field, index) => (
+                      <div
+                        key={index}
+                        className="flex items-start gap-2 rounded-lg bg-[#1C1C1C]/40 p-3"
+                      >
+                        <div
+                          className="mt-1 h-3 w-3 flex-shrink-0 rounded-full"
+                          style={{
+                            backgroundColor: COLORS[index % COLORS.length]
+                          }}
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-white/60">{field.label}</p>
+                          <p className="text-sm text-white/90">{field.value}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {boxes.length > 0 && (
+                <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
+                  <h3 className="mb-3 text-sm font-medium text-white/60">
+                    Matched Text Locations
+                  </h3>
+                  <div className="space-y-2">
+                    {boxes.map((box, index) => (
+                      <div
+                        key={index}
+                        className="flex items-start gap-2 rounded-lg bg-[#1C1C1C]/40 p-3"
+                      >
+                        <div
+                          className="mt-1 h-3 w-3 flex-shrink-0 rounded-full"
+                          style={{
+                            backgroundColor: COLORS[index % COLORS.length]
+                          }}
+                        />
+                        <p className="text-sm text-white/90">{box.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
