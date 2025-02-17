@@ -52,9 +52,9 @@ const EXAMPLES = [
   },
   {
     id: 2,
-    label: "Extract tax form fields",
-    text: "Extract the form number, fiscal start date, fiscal end date, and the plan liabilities beginning of the year and end of the year.",
-    imagePath: "/examples/tax_form.jpg",
+    label: "Extract formulae",
+    text: "Extract the two formulae",
+    imagePath: "/examples/formulae.jpg",
   },
   {
     id: 3,
