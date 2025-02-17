@@ -58,7 +58,10 @@ export async function extractTextFromImageAction(
       - Only extract information specifically requested in the instruction
       - Do not include any additional fields or explanatory text
       - Return exactly one value per requested field
-      - Maintain the exact [label]: [value] format`;
+      - Maintain the exact [label]: [value] format
+      
+      Think step by step and return your response in a structured manner.
+      `;
 
     const result = await model.generateContent([
       {
@@ -165,7 +168,10 @@ IMPORTANT:
 - Return exactly one array per value
 - Include the exact matched text in quotes
 - Only output the arrays, no other text
-- Ensure coordinates are precise`;
+- Ensure coordinates are precise
+
+Think step by step and return your response in a structured manner.
+`;
 
     const result = await model.generateContent([
       {

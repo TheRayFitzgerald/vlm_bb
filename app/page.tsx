@@ -12,7 +12,10 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { extractTextFromImageAction, findBoundingBoxesForTextAction } from "@/actions/gemini-actions";
+import {
+  extractTextFromImageAction,
+  findBoundingBoxesForTextAction,
+} from "@/actions/gemini-actions";
 
 const VISUALIZATION_STYLES = [
   { value: "highlight", label: "Highlight Style" },
@@ -62,34 +65,36 @@ const EXAMPLES = [
 ] as const;
 
 type BoundingBoxContent = {
-  coordinates: { x0: number; y0: number; x1: number; y1: number }
-  text: string
-}
+  coordinates: { x0: number; y0: number; x1: number; y1: number };
+  text: string;
+};
 
 type ExtractedField = {
-  label: string
-  value: string
-}
+  label: string;
+  value: string;
+};
 
 type ProcessingStatus = {
-  stage: 'idle' | 'extracting' | 'finding' | 'complete' | 'error'
-  message: string
-}
+  stage: "idle" | "extracting" | "finding" | "complete" | "error";
+  message: string;
+};
 
 function ProcessingIndicator({ status }: { status: ProcessingStatus }) {
-  if (status.stage === 'idle') return null;
+  if (status.stage === "idle") return null;
 
   return (
     <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-      {status.stage === 'error' ? (
+      {status.stage === "error" ? (
         <div className="text-red-400 text-sm font-mono whitespace-pre-wrap">
           {status.message}
         </div>
-      ) : status.stage !== 'complete' ? (
+      ) : status.stage !== "complete" ? (
         <div className="flex items-center gap-3 text-white/60">
           <Loader2 className="h-4 w-4 animate-spin" />
           <span className="text-sm">
-            {status.stage === 'extracting' ? 'Extracting text...' : 'Finding locations...'}
+            {status.stage === "extracting"
+              ? "Extracting context..."
+              : "Extracting bounding boxes..."}
           </span>
         </div>
       ) : null}
@@ -127,13 +132,17 @@ function ExtractedFieldsSkeleton() {
 }
 
 export default function GeminiTest() {
-  const [selectedModel, setSelectedModel] = useState<GeminiModel>(DEFAULT_MODEL);
+  const [selectedModel, setSelectedModel] =
+    useState<GeminiModel>(DEFAULT_MODEL);
   const [visualStyle, setVisualStyle] =
     useState<VisualizationStyle>("highlight");
   const [searchContent, setSearchContent] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
-  const [status, setStatus] = useState<ProcessingStatus>({ stage: 'idle', message: '' });
+  const [status, setStatus] = useState<ProcessingStatus>({
+    stage: "idle",
+    message: "",
+  });
   const [boxes, setBoxes] = useState<BoundingBoxContent[]>([]);
   const [extractedFields, setExtractedFields] = useState<ExtractedField[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -148,14 +157,14 @@ export default function GeminiTest() {
         setImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
-      setStatus({ stage: 'idle', message: '' });
+      setStatus({ stage: "idle", message: "" });
     }
   };
 
   const clearImage = () => {
     setImage(null);
     setImagePreview("");
-    setStatus({ stage: 'idle', message: '' });
+    setStatus({ stage: "idle", message: "" });
     setBoxes([]);
     setExtractedFields([]);
     if (fileInputRef.current) {
@@ -164,41 +173,47 @@ export default function GeminiTest() {
   };
 
   const processImage = async (base64Data: string, content: string) => {
-    setStatus({ stage: 'extracting', message: 'Analyzing image content...' });
+    setStatus({ stage: "extracting", message: "Analyzing image content..." });
     setBoxes([]);
     setExtractedFields([]);
 
     // Step 1: Extract text fields
-    const extractResponse = await extractTextFromImageAction(base64Data, content);
-    
+    const extractResponse = await extractTextFromImageAction(
+      base64Data,
+      content
+    );
+
     if (!extractResponse.isSuccess || !extractResponse.data) {
-      setStatus({ 
-        stage: 'error', 
-        message: `Failed to extract text from image.\n\nError: ${extractResponse.message}${extractResponse.data?.debug?.rawResponse ? `\n\nDebug:\n${extractResponse.data.debug.rawResponse}` : ''}`
+      setStatus({
+        stage: "error",
+        message: `Failed to extract text from image.\n\nError: ${extractResponse.message}${extractResponse.data?.debug?.rawResponse ? `\n\nDebug:\n${extractResponse.data.debug.rawResponse}` : ""}`,
       });
       return;
     }
 
     setExtractedFields(extractResponse.data.fields);
-    setStatus({ stage: 'finding', message: 'Locating extracted content...' });
+    setStatus({ stage: "finding", message: "Locating extracted content..." });
 
     // Step 2: Find bounding boxes for the extracted values
-    const searchTexts = extractResponse.data.fields.map(field => ({
+    const searchTexts = extractResponse.data.fields.map((field) => ({
       value: field.value,
-      label: field.label
+      label: field.label,
     }));
-    const boxesResponse = await findBoundingBoxesForTextAction(base64Data, searchTexts);
+    const boxesResponse = await findBoundingBoxesForTextAction(
+      base64Data,
+      searchTexts
+    );
 
     if (!boxesResponse.isSuccess || !boxesResponse.data) {
-      setStatus({ 
-        stage: 'error', 
-        message: `Failed to locate content in image.\n\nError: ${boxesResponse.message}${boxesResponse.data?.debug?.rawResponse ? `\n\nDebug:\n${boxesResponse.data.debug.rawResponse}` : ''}`
+      setStatus({
+        stage: "error",
+        message: `Failed to locate content in image.\n\nError: ${boxesResponse.message}${boxesResponse.data?.debug?.rawResponse ? `\n\nDebug:\n${boxesResponse.data.debug.rawResponse}` : ""}`,
       });
       return;
     }
 
     setBoxes(boxesResponse.data.boxes);
-    setStatus({ stage: 'complete', message: '' });
+    setStatus({ stage: "complete", message: "" });
   };
 
   const handleSubmit = async () => {
@@ -225,7 +240,7 @@ export default function GeminiTest() {
     try {
       const response = await fetch(example.imagePath);
       const blob = await response.blob();
-      const filename = example.imagePath.split('/').pop() || '';
+      const filename = example.imagePath.split("/").pop() || "";
       const file = new File([blob], filename, {
         type: "image/jpeg",
       });
@@ -247,9 +262,10 @@ export default function GeminiTest() {
       reader.readAsDataURL(file);
     } catch (error) {
       console.error("Error loading example image:", error);
-      setStatus({ 
-        stage: 'error', 
-        message: 'Failed to load example image. Please try again or use a different image.' 
+      setStatus({
+        stage: "error",
+        message:
+          "Failed to load example image. Please try again or use a different image.",
       });
     }
   };
@@ -266,7 +282,7 @@ export default function GeminiTest() {
       // Calculate dimensions to maintain aspect ratio while fitting the container
       const containerWidth = canvas.parentElement?.clientWidth || img.width;
       const scale = containerWidth / img.width;
-      
+
       canvas.width = containerWidth;
       canvas.height = img.height * scale;
 
@@ -327,12 +343,14 @@ export default function GeminiTest() {
     <div className="relative flex min-h-screen flex-col bg-[#1C1C1C] text-white">
       <div className="relative z-10 container mx-auto max-w-7xl p-4">
         <h1 className="mb-8 text-4xl font-medium text-white/90">VLM BB</h1>
-        <p className="mb-8 -mt-6 text-lg text-white/60">Visual Language Model Bounding Box Detection</p>
+        <p className="mb-8 -mt-6 text-lg text-white/60">
+          Visual Language Model Bounding Box Detection
+        </p>
 
         <div className="space-y-4">
           <div>
-            <Select 
-              value={selectedModel} 
+            <Select
+              value={selectedModel}
               onValueChange={(value: GeminiModel) => setSelectedModel(value)}
             >
               <SelectTrigger className="flex-1 bg-[#2A2A2A]/80 border-0 text-white/90">
@@ -372,7 +390,7 @@ export default function GeminiTest() {
               value={searchContent}
               onChange={(e) => setSearchContent(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   handleSubmit();
                 }
@@ -418,7 +436,7 @@ export default function GeminiTest() {
 
           <ProcessingIndicator status={status} />
 
-          {imagePreview && status.stage === 'complete' && (
+          {imagePreview && status.stage === "complete" && (
             <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 animate-in slide-in-from-bottom-4 duration-500">
               <div className="space-y-4">
                 <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4 animate-in fade-in duration-700">
@@ -444,7 +462,10 @@ export default function GeminiTest() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <canvas ref={canvasRef} className="h-auto w-full object-contain" />
+                  <canvas
+                    ref={canvasRef}
+                    className="h-auto w-full object-contain"
+                  />
                 </div>
               </div>
 
@@ -467,11 +488,13 @@ export default function GeminiTest() {
                         <div
                           className="mt-1 h-3 w-3 flex-shrink-0 rounded-full"
                           style={{
-                            backgroundColor: COLORS[index % COLORS.length]
+                            backgroundColor: COLORS[index % COLORS.length],
                           }}
                         />
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-white/60">{field.label}</p>
+                          <p className="text-sm font-medium text-white/60">
+                            {field.label}
+                          </p>
                           <p className="text-sm text-white/90">{field.value}</p>
                         </div>
                       </div>
