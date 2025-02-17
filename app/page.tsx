@@ -148,6 +148,7 @@ export default function GeminiTest() {
         setImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
+      setStatus({ stage: 'idle', message: '' });
     }
   };
 
@@ -220,7 +221,6 @@ export default function GeminiTest() {
     setBoxes([]);
     setExtractedFields([]);
     setImagePreview("");
-    setStatus({ stage: 'extracting', message: 'Loading example image...' });
 
     try {
       const response = await fetch(example.imagePath);
@@ -418,7 +418,7 @@ export default function GeminiTest() {
 
           <ProcessingIndicator status={status} />
 
-          {imagePreview && (
+          {imagePreview && status.stage === 'complete' && (
             <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 animate-in slide-in-from-bottom-4 duration-500">
               <div className="space-y-4">
                 <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4 animate-in fade-in duration-700">
@@ -444,19 +444,11 @@ export default function GeminiTest() {
                       </SelectContent>
                     </Select>
                   </div>
-                  {status.stage !== 'complete' ? (
-                    <div className="flex items-center justify-center py-20">
-                      <Loader2 className="h-6 w-6 animate-spin text-white/40" />
-                    </div>
-                  ) : (
-                    <canvas ref={canvasRef} className="h-auto w-full object-contain" />
-                  )}
+                  <canvas ref={canvasRef} className="h-auto w-full object-contain" />
                 </div>
               </div>
 
-              {status.stage !== 'complete' ? (
-                <ExtractedFieldsSkeleton />
-              ) : extractedFields.length > 0 && (
+              {extractedFields.length > 0 && (
                 <div className="h-fit rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4 lg:sticky lg:top-4 animate-in slide-in-from-right-4 duration-700">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-medium text-white/60">
