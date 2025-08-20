@@ -24,15 +24,7 @@ const VISUALIZATION_STYLES = [
 
 type VisualizationStyle = (typeof VISUALIZATION_STYLES)[number]["value"];
 
-const DEFAULT_MODEL = "gemini-2.0-pro-exp-02-05";
-
-const GEMINI_MODELS = [
-  { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
-  { value: "gemini-2.0-pro-exp-02-05", label: "Gemini 2.0 Pro Exp" },
-  { value: "gemini-1.5-pro-latest", label: "Gemini 1.5 Pro" },
-] as const;
-
-type GeminiModel = (typeof GEMINI_MODELS)[number]["value"];
+const MODEL_DISPLAY_NAME = "Gemini 2.5 Pro";
 
 const COLORS = [
   "#FFD700", // Gold
@@ -132,8 +124,6 @@ function ExtractedFieldsSkeleton() {
 }
 
 export default function GeminiTest() {
-  const [selectedModel, setSelectedModel] =
-    useState<GeminiModel>(DEFAULT_MODEL);
   const [visualStyle, setVisualStyle] =
     useState<VisualizationStyle>("highlight");
   const [searchContent, setSearchContent] = useState("");
@@ -348,22 +338,11 @@ export default function GeminiTest() {
         </p>
 
         <div className="space-y-4">
-          <div>
-            <Select
-              value={selectedModel}
-              onValueChange={(value: GeminiModel) => setSelectedModel(value)}
-            >
-              <SelectTrigger className="flex-1 bg-[#2A2A2A]/80 border-0 text-white/90">
-                <SelectValue placeholder="Select a model" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#2A2A2A] text-white/90">
-                {GEMINI_MODELS.map((model) => (
-                  <SelectItem key={model.value} value={model.value}>
-                    {model.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-white/60">Model</span>
+              <span className="text-sm text-white/90">{MODEL_DISPLAY_NAME}</span>
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">

@@ -31,7 +31,7 @@ export async function extractTextFromImageAction(
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-pro-exp-02-05",
+      model: "gemini-2.5-pro",
     });
 
     const prompt = `
@@ -136,7 +136,7 @@ export async function findBoundingBoxesForTextAction(
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-pro-exp-02-05",
+      model: "gemini-2.5-pro",
     });
 
     const contextList = searchTexts
