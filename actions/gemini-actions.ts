@@ -251,34 +251,13 @@ export async function findObjectInImageAction(
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-pro",
+      model: "gemini-2.5-flash",
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
     });
 
-    const prompt = `TASK: Locate the specified object in this image.
-
-OBJECT TO FIND: ${objectDescription}
-
-OUTPUT FORMAT:
-Return bounding box as array: [ymin, xmin, ymax, xmax, "object description"]
-Coordinates must be in range 0-1000
-
-RULES:
-1. Find the object in the image
-2. Box must capture the COMPLETE and FULL object
-3. Ensure no part of the object is cut off or missing
-4. If the object is not found, return an empty response
-
-EXAMPLE:
-For "beer bottle":
-[100, 200, 400, 350, "beer bottle"]
-
-IMPORTANT:
-- Include the object description in quotes
-- Only output the array, no other text
-- Prioritize capturing the entire object over tight bounds
-
-Think step by step and return your response in a structured manner.
-`;
+    const prompt = `Detect the ${objectDescription} in this image. Return a JSON array where each object contains "box_2d" with coordinates [ymin, xmin, ymax, xmax] normalized to 0-1000, and "label" with the object description.`;
 
     const result = await model.generateContent([
       {
@@ -293,12 +272,10 @@ Think step by step and return your response in a structured manner.
     const response = await result.response;
     const text = response.text();
 
-    // Extract coordinates and text
-    const regex =
-      /\[?\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*"([^"]+)"\s*\]?/g;
-    const matches = Array.from(text.matchAll(regex));
+    // Parse JSON response
+    const detections = JSON.parse(text);
 
-    if (matches.length === 0) {
+    if (!Array.isArray(detections) || detections.length === 0) {
       return {
         isSuccess: false,
         message: "Object not found in the image",
@@ -309,14 +286,15 @@ Think step by step and return your response in a structured manner.
       };
     }
 
-    const boxes = matches.map((match) => ({
+    // Convert to our internal format
+    const boxes = detections.map((detection: any) => ({
       coordinates: {
-        x0: parseInt(match[2]) / 1000,
-        y0: parseInt(match[1]) / 1000,
-        x1: parseInt(match[4]) / 1000,
-        y1: parseInt(match[3]) / 1000,
+        x0: detection.box_2d[1] / 1000,
+        y0: detection.box_2d[0] / 1000,
+        x1: detection.box_2d[3] / 1000,
+        y1: detection.box_2d[2] / 1000,
       },
-      text: match[5],
+      text: detection.label || objectDescription,
     }));
 
     return {
