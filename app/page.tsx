@@ -78,6 +78,12 @@ const OBJECT_EXAMPLES: Example[] = [
     text: "coca-cola can",
     imagePath: "/examples/coke.jpg",
   },
+  {
+    id: 2,
+    label: "Find beer bottle",
+    text: "beer bottle",
+    imagePath: "/examples/Locals Of Napoli.jpeg",
+  },
 ];
 
 type BoundingBoxContent = {
@@ -144,7 +150,7 @@ function ExtractedFieldsSkeleton() {
 }
 
 export default function GeminiTest() {
-  const [detectionMode, setDetectionMode] = useState<DetectionMode>("text");
+  const [detectionMode, setDetectionMode] = useState<DetectionMode>("object");
   const [visualStyle, setVisualStyle] =
     useState<VisualizationStyle>("highlight");
   const [searchContent, setSearchContent] = useState("");
