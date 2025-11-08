@@ -81,7 +81,7 @@ const OBJECT_EXAMPLES: Example[] = [
   {
     id: 1,
     label: "Find Coca-Cola can",
-    text: "coca-cola can",
+    text: "coca-cola can, no straw",
     imagePath: "/examples/coke.jpg",
   },
   {
