@@ -251,7 +251,7 @@ export async function findObjectInImageAction(
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-image-preview",
+      model: "gemini-2.5-pro",
     });
 
     const prompt = `TASK: Locate the specified object in this image.
@@ -264,8 +264,9 @@ Coordinates must be in range 0-1000
 
 RULES:
 1. Find the object in the image
-2. Box must tightly contain the complete object
-3. If the object is not found, return an empty response
+2. Box must capture the COMPLETE and FULL object
+3. Ensure no part of the object is cut off or missing
+4. If the object is not found, return an empty response
 
 EXAMPLE:
 For "beer bottle":
@@ -274,7 +275,7 @@ For "beer bottle":
 IMPORTANT:
 - Include the object description in quotes
 - Only output the array, no other text
-- Ensure coordinates are precise and tight around the object
+- Prioritize capturing the entire object over tight bounds
 
 Think step by step and return your response in a structured manner.
 `;
