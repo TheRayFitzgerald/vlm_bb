@@ -81,13 +81,13 @@ const OBJECT_EXAMPLES: Example[] = [
   {
     id: 1,
     label: "Find Coca-Cola can",
-    text: "Find the coca-cola can, no straw",
+    text: "coca-cola can",
     imagePath: "/examples/coke.jpg",
   },
   {
     id: 2,
     label: "Find beer bottle",
-    text: "Find the beer bottle",
+    text: "beer bottle",
     imagePath: "/examples/Locals Of Napoli.jpeg",
   },
 ];
