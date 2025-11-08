@@ -31,7 +31,7 @@ export async function extractTextFromImageAction(
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-pro",
+      model: "gemini-2.5-flash-image-preview",
     });
 
     const prompt = `
@@ -136,7 +136,7 @@ export async function findBoundingBoxesForTextAction(
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-pro",
+      model: "gemini-2.5-flash-image-preview",
     });
 
     const contextList = searchTexts
@@ -228,6 +228,113 @@ Think step by step and return your response in a structured manner.
         error instanceof Error
           ? error.message
           : "Failed to find bounding boxes",
+      data: {
+        boxes: [],
+        debug: {
+          rawResponse: error instanceof Error ? error.message : "Unknown error",
+        },
+      },
+    };
+  }
+}
+
+export async function findObjectInImageAction(
+  base64Image: string,
+  objectDescription: string
+): Promise<
+  ActionState<{ boxes: BoundingBoxContent[]; debug?: { rawResponse: string } }>
+> {
+  try {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("Google API key not found");
+    }
+
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+    });
+
+    const prompt = `TASK: Locate all instances of the specified object in this image.
+
+OBJECT TO FIND: ${objectDescription}
+
+OUTPUT FORMAT:
+Return bounding boxes as arrays: [ymin, xmin, ymax, xmax, "object description"]
+Coordinates must be in range 0-1000
+
+RULES:
+1. Find ALL instances of the object in the image
+2. Box must tightly contain the complete object
+3. If multiple instances exist, return a box for each one
+4. If the object is not found, return an empty response
+
+EXAMPLE:
+For "beer bottle" if two bottles are found:
+[100, 200, 400, 350, "beer bottle"]
+[120, 500, 420, 650, "beer bottle"]
+
+IMPORTANT:
+- Return one array per object instance found
+- Include the object description in quotes
+- Only output the arrays, no other text
+- Ensure coordinates are precise and tight around the object
+
+Think step by step and return your response in a structured manner.
+`;
+
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          data: base64Image,
+          mimeType: "image/jpeg",
+        },
+      },
+      prompt,
+    ]);
+
+    const response = await result.response;
+    const text = response.text();
+
+    // Extract coordinates and text
+    const regex =
+      /\[?\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*"([^"]+)"\s*\]?/g;
+    const matches = Array.from(text.matchAll(regex));
+
+    if (matches.length === 0) {
+      return {
+        isSuccess: false,
+        message: "No objects found in the image",
+        data: {
+          boxes: [],
+          debug: { rawResponse: text },
+        },
+      };
+    }
+
+    const boxes = matches.map((match) => ({
+      coordinates: {
+        x0: parseInt(match[2]) / 1000,
+        y0: parseInt(match[1]) / 1000,
+        x1: parseInt(match[4]) / 1000,
+        y1: parseInt(match[3]) / 1000,
+      },
+      text: match[5],
+    }));
+
+    return {
+      isSuccess: true,
+      message: `Successfully found ${boxes.length} object${boxes.length > 1 ? "s" : ""}`,
+      data: {
+        boxes,
+        debug: { rawResponse: text },
+      },
+    };
+  } catch (error) {
+    console.error("Error finding object:", error);
+    return {
+      isSuccess: false,
+      message:
+        error instanceof Error ? error.message : "Failed to find object",
       data: {
         boxes: [],
         debug: {

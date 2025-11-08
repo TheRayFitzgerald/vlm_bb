@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   extractTextFromImageAction,
   findBoundingBoxesForTextAction,
+  findObjectInImageAction,
 } from "@/actions/gemini-actions";
 
 const VISUALIZATION_STYLES = [
@@ -23,6 +24,13 @@ const VISUALIZATION_STYLES = [
 ] as const;
 
 type VisualizationStyle = (typeof VISUALIZATION_STYLES)[number]["value"];
+
+const DETECTION_MODES = [
+  { value: "text", label: "Text Extraction" },
+  { value: "object", label: "Object Detection" },
+] as const;
+
+type DetectionMode = (typeof DETECTION_MODES)[number]["value"];
 
 const MODEL_DISPLAY_NAME = "Gemini 2.5 Pro";
 
@@ -35,7 +43,14 @@ const COLORS = [
   "#F0E68C", // Khaki
 ];
 
-const EXAMPLES = [
+type Example = {
+  id: number;
+  label: string;
+  text: string;
+  imagePath: string;
+};
+
+const EXAMPLES: Example[] = [
   {
     id: 1,
     label: "Find invoice items",
@@ -54,7 +69,16 @@ const EXAMPLES = [
     text: 'Extract the sections for "richest behaviour intelligence" and "unified risk platform" and their content',
     imagePath: "/examples/text_doc.jpg",
   },
-] as const;
+];
+
+const OBJECT_EXAMPLES: Example[] = [
+  {
+    id: 1,
+    label: "Find Coca-Cola can",
+    text: "coca-cola can",
+    imagePath: "/examples/coke.jpg",
+  },
+];
 
 type BoundingBoxContent = {
   coordinates: { x0: number; y0: number; x1: number; y1: number };
@@ -83,11 +107,7 @@ function ProcessingIndicator({ status }: { status: ProcessingStatus }) {
       ) : status.stage !== "complete" ? (
         <div className="flex items-center gap-3 text-white/60">
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm">
-            {status.stage === "extracting"
-              ? "Extracting context..."
-              : "Extracting bounding boxes..."}
-          </span>
+          <span className="text-sm">{status.message}</span>
         </div>
       ) : null}
     </div>
@@ -124,6 +144,7 @@ function ExtractedFieldsSkeleton() {
 }
 
 export default function GeminiTest() {
+  const [detectionMode, setDetectionMode] = useState<DetectionMode>("text");
   const [visualStyle, setVisualStyle] =
     useState<VisualizationStyle>("highlight");
   const [searchContent, setSearchContent] = useState("");
@@ -163,47 +184,70 @@ export default function GeminiTest() {
   };
 
   const processImage = async (base64Data: string, content: string) => {
-    setStatus({ stage: "extracting", message: "Analyzing image content..." });
     setBoxes([]);
     setExtractedFields([]);
 
-    // Step 1: Extract text fields
-    const extractResponse = await extractTextFromImageAction(
-      base64Data,
-      content
-    );
+    if (detectionMode === "text") {
+      // Text extraction mode: Two-step process
+      setStatus({ stage: "extracting", message: "Analyzing image content..." });
 
-    if (!extractResponse.isSuccess || !extractResponse.data) {
-      setStatus({
-        stage: "error",
-        message: `Failed to extract text from image.\n\nError: ${extractResponse.message}${extractResponse.data?.debug?.rawResponse ? `\n\nDebug:\n${extractResponse.data.debug.rawResponse}` : ""}`,
-      });
-      return;
+      // Step 1: Extract text fields
+      const extractResponse = await extractTextFromImageAction(
+        base64Data,
+        content
+      );
+
+      if (!extractResponse.isSuccess || !extractResponse.data) {
+        setStatus({
+          stage: "error",
+          message: `Failed to extract text from image.\n\nError: ${extractResponse.message}${extractResponse.data?.debug?.rawResponse ? `\n\nDebug:\n${extractResponse.data.debug.rawResponse}` : ""}`,
+        });
+        return;
+      }
+
+      setExtractedFields(extractResponse.data.fields);
+      setStatus({ stage: "finding", message: "Locating extracted content..." });
+
+      // Step 2: Find bounding boxes for the extracted values
+      const searchTexts = extractResponse.data.fields.map((field) => ({
+        value: field.value,
+        label: field.label,
+      }));
+      const boxesResponse = await findBoundingBoxesForTextAction(
+        base64Data,
+        searchTexts
+      );
+
+      if (!boxesResponse.isSuccess || !boxesResponse.data) {
+        setStatus({
+          stage: "error",
+          message: `Failed to locate content in image.\n\nError: ${boxesResponse.message}${boxesResponse.data?.debug?.rawResponse ? `\n\nDebug:\n${boxesResponse.data.debug.rawResponse}` : ""}`,
+        });
+        return;
+      }
+
+      setBoxes(boxesResponse.data.boxes);
+      setStatus({ stage: "complete", message: "" });
+    } else {
+      // Object detection mode: Single-step process
+      setStatus({ stage: "extracting", message: "Detecting object..." });
+
+      const objectResponse = await findObjectInImageAction(
+        base64Data,
+        content
+      );
+
+      if (!objectResponse.isSuccess || !objectResponse.data) {
+        setStatus({
+          stage: "error",
+          message: `Failed to detect object in image.\n\nError: ${objectResponse.message}${objectResponse.data?.debug?.rawResponse ? `\n\nDebug:\n${objectResponse.data.debug.rawResponse}` : ""}`,
+        });
+        return;
+      }
+
+      setBoxes(objectResponse.data.boxes);
+      setStatus({ stage: "complete", message: "" });
     }
-
-    setExtractedFields(extractResponse.data.fields);
-    setStatus({ stage: "finding", message: "Locating extracted content..." });
-
-    // Step 2: Find bounding boxes for the extracted values
-    const searchTexts = extractResponse.data.fields.map((field) => ({
-      value: field.value,
-      label: field.label,
-    }));
-    const boxesResponse = await findBoundingBoxesForTextAction(
-      base64Data,
-      searchTexts
-    );
-
-    if (!boxesResponse.isSuccess || !boxesResponse.data) {
-      setStatus({
-        stage: "error",
-        message: `Failed to locate content in image.\n\nError: ${boxesResponse.message}${boxesResponse.data?.debug?.rawResponse ? `\n\nDebug:\n${boxesResponse.data.debug.rawResponse}` : ""}`,
-      });
-      return;
-    }
-
-    setBoxes(boxesResponse.data.boxes);
-    setStatus({ stage: "complete", message: "" });
   };
 
   const handleSubmit = async () => {
@@ -221,7 +265,7 @@ export default function GeminiTest() {
     await processImage(base64Data, searchContent);
   };
 
-  const handleExampleClick = async (example: (typeof EXAMPLES)[number]) => {
+  const handleExampleClick = async (example: Example) => {
     setSearchContent(example.text);
     setBoxes([]);
     setExtractedFields([]);
@@ -345,6 +389,32 @@ export default function GeminiTest() {
             </div>
           </div>
 
+          <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-white/60">Mode</span>
+              <Select
+                value={detectionMode}
+                onValueChange={(value: DetectionMode) => {
+                  setDetectionMode(value);
+                  setBoxes([]);
+                  setExtractedFields([]);
+                  setStatus({ stage: "idle", message: "" });
+                }}
+              >
+                <SelectTrigger className="w-[180px] bg-[#2A2A2A]/80 border-0 text-white/90">
+                  <SelectValue placeholder="Select mode" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#2A2A2A] text-white/90">
+                  {DETECTION_MODES.map((mode) => (
+                    <SelectItem key={mode.value} value={mode.value}>
+                      {mode.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="flex flex-col gap-2">
             <div className="relative flex h-[64px] items-center rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm px-4">
               <input
@@ -374,7 +444,11 @@ export default function GeminiTest() {
                   handleSubmit();
                 }
               }}
-              placeholder="Enter the content you want to find in the image"
+              placeholder={
+                detectionMode === "text"
+                  ? "Enter the content you want to find in the image"
+                  : "Describe the object you want to find (e.g., 'beer bottle', 'person', 'red car')"
+              }
               className="min-h-[100px] resize-none border-0 bg-transparent p-4 pb-14 text-lg text-white/90 placeholder:text-white/40 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             <div className="absolute bottom-3 left-3 right-3 flex gap-2">
@@ -389,7 +463,7 @@ export default function GeminiTest() {
                 onClick={handleSubmit}
                 className="flex-1 bg-blue-500/80 hover:bg-blue-500/90 text-white/90 border-0 rounded-lg h-[38px] text-sm font-medium transition-colors"
               >
-                Find Content
+                {detectionMode === "text" ? "Find Content" : "Find Object"}
               </Button>
             </div>
           </div>
@@ -401,7 +475,7 @@ export default function GeminiTest() {
               </span>
             </h2>
             <div className="grid grid-cols-3 gap-3">
-              {EXAMPLES.map((example) => (
+              {(detectionMode === "text" ? EXAMPLES : OBJECT_EXAMPLES).map((example) => (
                 <button
                   key={example.id}
                   onClick={() => handleExampleClick(example)}
@@ -416,12 +490,16 @@ export default function GeminiTest() {
           <ProcessingIndicator status={status} />
 
           {imagePreview && status.stage === "complete" && (
-            <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 animate-in slide-in-from-bottom-4 duration-500">
+            <div
+              className={`grid grid-cols-1 ${detectionMode === "text" && extractedFields.length > 0 ? "lg:grid-cols-[2fr_1fr]" : ""} gap-6 animate-in slide-in-from-bottom-4 duration-500`}
+            >
               <div className="space-y-4">
                 <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4 animate-in fade-in duration-700">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-medium text-white/60">
-                      Document Preview
+                      {detectionMode === "text"
+                        ? "Document Preview"
+                        : "Image Preview"}
                     </h3>
                     <Select
                       value={visualStyle}
@@ -448,7 +526,7 @@ export default function GeminiTest() {
                 </div>
               </div>
 
-              {extractedFields.length > 0 && (
+              {detectionMode === "text" && extractedFields.length > 0 && (
                 <div className="h-fit rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4 lg:sticky lg:top-4 animate-in slide-in-from-right-4 duration-700">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-medium text-white/60">
