@@ -18,6 +18,8 @@ import {
   findObjectInImageAction,
 } from "@/actions/gemini-actions";
 
+const isDevelopment = process.env.NODE_ENV === "development";
+
 const VISUALIZATION_STYLES = [
   { value: "highlight", label: "Highlight Style" },
   { value: "box", label: "Bounding Box Style" },
@@ -25,12 +27,16 @@ const VISUALIZATION_STYLES = [
 
 type VisualizationStyle = (typeof VISUALIZATION_STYLES)[number]["value"];
 
-const DETECTION_MODES = [
+const ALL_DETECTION_MODES = [
   { value: "text", label: "Text Extraction" },
   { value: "object", label: "Object Detection" },
 ] as const;
 
-type DetectionMode = (typeof DETECTION_MODES)[number]["value"];
+const DETECTION_MODES = isDevelopment
+  ? ALL_DETECTION_MODES
+  : ALL_DETECTION_MODES.filter((mode) => mode.value === "text");
+
+type DetectionMode = (typeof ALL_DETECTION_MODES)[number]["value"];
 
 const MODEL_DISPLAY_NAME = "Gemini 2.5 Pro";
 
@@ -150,7 +156,9 @@ function ExtractedFieldsSkeleton() {
 }
 
 export default function GeminiTest() {
-  const [detectionMode, setDetectionMode] = useState<DetectionMode>("object");
+  const [detectionMode, setDetectionMode] = useState<DetectionMode>(
+    isDevelopment ? "object" : "text"
+  );
   const [visualStyle, setVisualStyle] =
     useState<VisualizationStyle>("highlight");
   const [searchContent, setSearchContent] = useState("");
@@ -395,31 +403,33 @@ export default function GeminiTest() {
             </div>
           </div>
 
-          <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-white/60">Mode</span>
-              <Select
-                value={detectionMode}
-                onValueChange={(value: DetectionMode) => {
-                  setDetectionMode(value);
-                  setBoxes([]);
-                  setExtractedFields([]);
-                  setStatus({ stage: "idle", message: "" });
-                }}
-              >
-                <SelectTrigger className="w-[180px] bg-[#2A2A2A]/80 border-0 text-white/90">
-                  <SelectValue placeholder="Select mode" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#2A2A2A] text-white/90">
-                  {DETECTION_MODES.map((mode) => (
-                    <SelectItem key={mode.value} value={mode.value}>
-                      {mode.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {isDevelopment && (
+            <div className="rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-white/60">Mode</span>
+                <Select
+                  value={detectionMode}
+                  onValueChange={(value: DetectionMode) => {
+                    setDetectionMode(value);
+                    setBoxes([]);
+                    setExtractedFields([]);
+                    setStatus({ stage: "idle", message: "" });
+                  }}
+                >
+                  <SelectTrigger className="w-[180px] bg-[#2A2A2A]/80 border-0 text-white/90">
+                    <SelectValue placeholder="Select mode" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#2A2A2A] text-white/90">
+                    {DETECTION_MODES.map((mode) => (
+                      <SelectItem key={mode.value} value={mode.value}>
+                        {mode.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex flex-col gap-2">
             <div className="relative flex h-[64px] items-center rounded-xl bg-[#2A2A2A]/80 backdrop-blur-sm px-4">
