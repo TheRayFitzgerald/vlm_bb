@@ -251,32 +251,29 @@ export async function findObjectInImageAction(
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-image-preview",
     });
 
-    const prompt = `TASK: Locate all instances of the specified object in this image.
+    const prompt = `TASK: Locate the specified object in this image.
 
 OBJECT TO FIND: ${objectDescription}
 
 OUTPUT FORMAT:
-Return bounding boxes as arrays: [ymin, xmin, ymax, xmax, "object description"]
+Return bounding box as array: [ymin, xmin, ymax, xmax, "object description"]
 Coordinates must be in range 0-1000
 
 RULES:
-1. Find ALL instances of the object in the image
+1. Find the object in the image
 2. Box must tightly contain the complete object
-3. If multiple instances exist, return a box for each one
-4. If the object is not found, return an empty response
+3. If the object is not found, return an empty response
 
 EXAMPLE:
-For "beer bottle" if two bottles are found:
+For "beer bottle":
 [100, 200, 400, 350, "beer bottle"]
-[120, 500, 420, 650, "beer bottle"]
 
 IMPORTANT:
-- Return one array per object instance found
 - Include the object description in quotes
-- Only output the arrays, no other text
+- Only output the array, no other text
 - Ensure coordinates are precise and tight around the object
 
 Think step by step and return your response in a structured manner.
@@ -303,7 +300,7 @@ Think step by step and return your response in a structured manner.
     if (matches.length === 0) {
       return {
         isSuccess: false,
-        message: "No objects found in the image",
+        message: "Object not found in the image",
         data: {
           boxes: [],
           debug: { rawResponse: text },
@@ -323,7 +320,7 @@ Think step by step and return your response in a structured manner.
 
     return {
       isSuccess: true,
-      message: `Successfully found ${boxes.length} object${boxes.length > 1 ? "s" : ""}`,
+      message: "Successfully found object",
       data: {
         boxes,
         debug: { rawResponse: text },
